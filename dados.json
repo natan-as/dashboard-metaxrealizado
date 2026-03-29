@@ -1,0 +1,760 @@
+{
+  "stores": [
+    {
+      "id": "st_1774674789236",
+      "name": "Havaianas 3 Américas"
+    },
+    {
+      "id": "st_1774674797518",
+      "name": "Havaianas Pantanal"
+    },
+    {
+      "id": "st_1774674801821",
+      "name": "Havaianas Estação"
+    },
+    {
+      "id": "st_1774674816996",
+      "name": "Havaianas Goiabeiras"
+    },
+    {
+      "id": "st_1774674821389",
+      "name": "Hering Estação"
+    },
+    {
+      "id": "st_1774674824994",
+      "name": "Hering Pantanal"
+    },
+    {
+      "id": "st_1774674831929",
+      "name": "Hering 3 Américas"
+    },
+    {
+      "id": "st_1774675059413",
+      "name": "Havaianas Várzea Grande"
+    },
+    {
+      "id": "st_1774675064727",
+      "name": "Havaianas Sinop"
+    },
+    {
+      "id": "st_1774675069456",
+      "name": "Havaianas Lucas do Rio Verde"
+    },
+    {
+      "id": "st_1774675082617",
+      "name": "Havaianas Sorriso"
+    },
+    {
+      "id": "st_1774675092087",
+      "name": "Havaianas Rondonópolis"
+    },
+    {
+      "id": "st_1774675101733",
+      "name": "Hering Lucas do Rio Verde"
+    }
+  ],
+  "sellers": [
+    {
+      "id": "sv_1774736167135",
+      "name": "Juliana Fagundes Gonçalves",
+      "storeId": "st_1774674824994"
+    },
+    {
+      "id": "sv_1774736418894",
+      "name": "Mariany Rezende de Araujo",
+      "storeId": "st_1774674831929"
+    },
+    {
+      "id": "sv_1774736437343",
+      "name": "Diego Moraes Leal",
+      "storeId": "st_1774674824994"
+    },
+    {
+      "id": "sv_1774736455117",
+      "name": "Laura Cristina Graziani Cardoso Moutinho",
+      "storeId": "st_1774674821389"
+    },
+    {
+      "id": "sv_1774736468673",
+      "name": "Victor Hugo Leocadio da Silva Veiga",
+      "storeId": "st_1774674824994"
+    },
+    {
+      "id": "sv_1774736485912",
+      "name": "Monize Cristina Miranda Dos Santos",
+      "storeId": "st_1774674824994"
+    },
+    {
+      "id": "sv_1774736494808",
+      "name": "Denise Campos da Silva",
+      "storeId": "st_1774674821389"
+    },
+    {
+      "id": "sv_1774736520615",
+      "name": "Guilherme de Sousa Rodrigues",
+      "storeId": "st_1774674824994"
+    },
+    {
+      "id": "sv_1774736558432",
+      "name": "Lucas Matheus Dos Santos Moreira",
+      "storeId": "st_1774675101733"
+    },
+    {
+      "id": "sv_1774736575695",
+      "name": "Marinilce Alves do Carmo",
+      "storeId": "st_1774674831929"
+    },
+    {
+      "id": "sv_1774736595312",
+      "name": "Eliane Auxiliadora de Almeida Campos",
+      "storeId": "st_1774674821389"
+    },
+    {
+      "id": "sv_1774736612699",
+      "name": "Naiara Sabrina Santos de Jesus",
+      "storeId": "st_1774674821389"
+    },
+    {
+      "id": "sv_1774736636673",
+      "name": "Vanuza Valeria Medeiros Pego",
+      "storeId": "st_1774675101733"
+    },
+    {
+      "id": "sv_1774736645473",
+      "name": "Dayane Pinheiro da Silva",
+      "storeId": "st_1774674831929"
+    },
+    {
+      "id": "sv_1774736656366",
+      "name": "Leireline Ferreira Assis",
+      "storeId": "st_1774674831929"
+    },
+    {
+      "id": "sv_1774736665016",
+      "name": "Cirlene Raquel dos Santos",
+      "storeId": "st_1774674824994"
+    },
+    {
+      "id": "sv_1774736674071",
+      "name": "Abilene Dos Santos Pereira",
+      "storeId": "st_1774674821389"
+    },
+    {
+      "id": "sv_1774736701551",
+      "name": "Geisieli Aparecida Conrado Dos Reis",
+      "storeId": "st_1774674824994"
+    },
+    {
+      "id": "sv_1774738435633",
+      "name": "Waleska de Freitas Piedade",
+      "storeId": "st_1774674831929"
+    },
+    {
+      "id": "sv_1774743048125",
+      "name": "Gildene Maria de Carvalho Beze",
+      "storeId": "st_1774675064727"
+    },
+    {
+      "id": "sv_1774743056260",
+      "name": "Helen Andressa Bezerra da Silv",
+      "storeId": "st_1774675064727"
+    },
+    {
+      "id": "sv_1774743064169",
+      "name": "Kallyta Prado de Azevedo",
+      "storeId": "st_1774675064727"
+    },
+    {
+      "id": "sv_1774743071812",
+      "name": "Suyane Aparecida de Sousa",
+      "storeId": "st_1774675064727"
+    },
+    {
+      "id": "sv_1774743085233",
+      "name": "Camily Victoria Franca",
+      "storeId": "st_1774675082617"
+    },
+    {
+      "id": "sv_1774743104054",
+      "name": "Jaqueline Santos Santana",
+      "storeId": "st_1774675082617"
+    },
+    {
+      "id": "sv_1774743111156",
+      "name": "Jessica Gomes Peixoto",
+      "storeId": "st_1774675082617"
+    },
+    {
+      "id": "sv_1774743125155",
+      "name": "Matheus Sousa Guimaraes",
+      "storeId": "st_1774675082617"
+    },
+    {
+      "id": "sv_1774743135842",
+      "name": "Monica Caroline Andrade Ferrei",
+      "storeId": "st_1774675082617"
+    },
+    {
+      "id": "sv_1774743146403",
+      "name": "Tamara Novais da Franca",
+      "storeId": "st_1774675082617"
+    },
+    {
+      "id": "sv_1774743159022",
+      "name": "Adriane Jesuina Nunes",
+      "storeId": "st_1774674816996"
+    },
+    {
+      "id": "sv_1774743165221",
+      "name": "Angelica Oliveira da Silva",
+      "storeId": "st_1774674816996"
+    },
+    {
+      "id": "sv_1774743170912",
+      "name": "Camila Rodrigues de Sales",
+      "storeId": "st_1774674816996"
+    },
+    {
+      "id": "sv_1774743182431",
+      "name": "Sthefanny Monteiro Silva",
+      "storeId": "st_1774674816996"
+    },
+    {
+      "id": "sv_1774743910852",
+      "name": "Andrea Jesuina Nunes",
+      "storeId": "st_1774675059413"
+    },
+    {
+      "id": "sv_1774743917313",
+      "name": "Angela Serenita de Castro",
+      "storeId": "st_1774675059413"
+    },
+    {
+      "id": "sv_1774743922264",
+      "name": "Maria do Carmo Ramos de Campos",
+      "storeId": "st_1774675059413"
+    },
+    {
+      "id": "sv_1774743928055",
+      "name": "Michelli Patricia de O. Ramos",
+      "storeId": "st_1774675059413"
+    },
+    {
+      "id": "sv_1774743933579",
+      "name": "Thayna Aparecida Rodrigues",
+      "storeId": "st_1774675059413"
+    },
+    {
+      "id": "sv_1774743960954",
+      "name": "Andressa Rodrigues Pereira Dos",
+      "storeId": "st_1774674801821"
+    },
+    {
+      "id": "sv_1774743966548",
+      "name": "Andreza Mayarasales de Paula",
+      "storeId": "st_1774674801821"
+    },
+    {
+      "id": "sv_1774743973237",
+      "name": "Anny Gabrielle de Oliveira Alb",
+      "storeId": "st_1774674801821"
+    },
+    {
+      "id": "sv_1774743979079",
+      "name": "Beatriz Rodrigues Ferreira",
+      "storeId": "st_1774674801821"
+    },
+    {
+      "id": "sv_1774743983518",
+      "name": "Nathalya Fatima Santos",
+      "storeId": "st_1774674801821"
+    },
+    {
+      "id": "sv_1774743991161",
+      "name": "Rosane Zanella",
+      "storeId": "st_1774674801821"
+    },
+    {
+      "id": "sv_1774743996259",
+      "name": "Sthefanny Monteiro Silva",
+      "storeId": "st_1774674801821"
+    },
+    {
+      "id": "sv_1774744006480",
+      "name": "Hanna Adryslla Almeida de Araú",
+      "storeId": "st_1774674789236"
+    },
+    {
+      "id": "sv_1774744011066",
+      "name": "Marcia Paula Brasileir",
+      "storeId": "st_1774674789236"
+    },
+    {
+      "id": "sv_1774744015844",
+      "name": "Maricelma Martins da Silva",
+      "storeId": "st_1774674789236"
+    },
+    {
+      "id": "sv_1774744023558",
+      "name": "Michele de Souza Lima Ribeiro",
+      "storeId": "st_1774674789236"
+    },
+    {
+      "id": "sv_1774744029353",
+      "name": "Rafaella Ribeiro da Silva",
+      "storeId": "st_1774674789236"
+    },
+    {
+      "id": "sv_1774744058122",
+      "name": "Ana Clara Menolli de Freitas",
+      "storeId": "st_1774675092087"
+    },
+    {
+      "id": "sv_1774744064064",
+      "name": "Grazielly Fernandes Lemes",
+      "storeId": "st_1774675092087"
+    },
+    {
+      "id": "sv_1774744068965",
+      "name": "Kátia Menolli Duran",
+      "storeId": "st_1774675092087"
+    },
+    {
+      "id": "sv_1774744074431",
+      "name": "Poliana Rodrigues Pardinho",
+      "storeId": "st_1774675092087"
+    },
+    {
+      "id": "sv_1774744083686",
+      "name": "Aurora Domingues Alves da Luz",
+      "storeId": "st_1774674797518"
+    },
+    {
+      "id": "sv_1774744087906",
+      "name": "Marenil Rosalina de Souza Silv",
+      "storeId": "st_1774674797518"
+    },
+    {
+      "id": "sv_1774744092292",
+      "name": "Maria de Souza Mendes",
+      "storeId": "st_1774674797518"
+    },
+    {
+      "id": "sv_1774744096220",
+      "name": "Thayne Rafaela Figueiredo Reze",
+      "storeId": "st_1774674797518"
+    },
+    {
+      "id": "sv_1774744105709",
+      "name": "Katia Cilene da Silva",
+      "storeId": "st_1774675069456"
+    },
+    {
+      "id": "sv_1774744110775",
+      "name": "Leticia Cruz Nerys",
+      "storeId": "st_1774675069456"
+    },
+    {
+      "id": "sv_1774744114997",
+      "name": "Meiridian Silva Gomes Daniel",
+      "storeId": "st_1774675069456"
+    }
+  ],
+  "metas": {
+    "2026-03": {
+      "sv_1774736167135": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 1019.89,
+        "rQ": 11
+      },
+      "sv_1774736418894": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 15545.73,
+        "rQ": 138
+      },
+      "sv_1774736437343": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 100235.99,
+        "rQ": 811
+      },
+      "sv_1774736455117": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 102248.37,
+        "rQ": 775
+      },
+      "sv_1774736468673": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 90823.07,
+        "rQ": 705
+      },
+      "sv_1774736485912": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 0,
+        "rQ": 0
+      },
+      "sv_1774736494808": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 863.96,
+        "rQ": 5
+      },
+      "sv_1774736520615": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 70325.54,
+        "rQ": 550
+      },
+      "sv_1774736558432": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 57303.31,
+        "rQ": 482
+      },
+      "sv_1774736575695": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 74025.43,
+        "rQ": 606
+      },
+      "sv_1774736595312": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 108293.72,
+        "rQ": 838
+      },
+      "sv_1774736612699": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 97800.48,
+        "rQ": 762
+      },
+      "sv_1774736623734": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 0,
+        "rQ": 0
+      },
+      "sv_1774736636673": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 1099.9,
+        "rQ": 10
+      },
+      "sv_1774736645473": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 5679.56,
+        "rQ": 46
+      },
+      "sv_1774736656366": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 100376.56,
+        "rQ": 784
+      },
+      "sv_1774736665016": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": -179.97,
+        "rQ": -3
+      },
+      "sv_1774736674071": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 99328.16,
+        "rQ": 791
+      },
+      "sv_1774736701551": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 439.97,
+        "rQ": 3
+      },
+      "sv_1774738435633": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 32040.66,
+        "rQ": 240
+      },
+      "sv_1774743159022": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 8358.72,
+        "rQ": 138
+      },
+      "sv_1774744058122": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 4894.08,
+        "rQ": 74
+      },
+      "sv_1774743910852": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 2819.55,
+        "rQ": 56
+      },
+      "sv_1774743960954": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 36909.3,
+        "rQ": 649
+      },
+      "sv_1774743966548": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 101147.3,
+        "rQ": 1711
+      },
+      "sv_1774743917313": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 3.75,
+        "rQ": 0
+      },
+      "sv_1774743165221": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 19677.13,
+        "rQ": 322
+      },
+      "sv_1774743973237": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 1949.69,
+        "rQ": 31
+      },
+      "sv_1774744083686": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 96874.42,
+        "rQ": 1676
+      },
+      "sv_1774743979079": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 25624.01,
+        "rQ": 482
+      },
+      "sv_1774743170912": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 10036.81,
+        "rQ": 169
+      },
+      "sv_1774743085233": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 1909.96,
+        "rQ": 34
+      },
+      "sv_1774743048125": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 8498.95,
+        "rQ": 140
+      },
+      "sv_1774744064064": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 43856.31,
+        "rQ": 728
+      },
+      "sv_1774744006480": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 35248.22,
+        "rQ": 637
+      },
+      "sv_1774743056260": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 7947.92,
+        "rQ": 128
+      },
+      "sv_1774743104054": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 21023.51,
+        "rQ": 344
+      },
+      "sv_1774743111156": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 22267.38,
+        "rQ": 389
+      },
+      "sv_1774743064169": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 39326.89,
+        "rQ": 617
+      },
+      "sv_1774744105709": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 18925.67,
+        "rQ": 316
+      },
+      "sv_1774744068965": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 229.96,
+        "rQ": 4
+      },
+      "sv_1774744110775": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 24373.08,
+        "rQ": 411
+      },
+      "sv_1774744011066": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 4973.88,
+        "rQ": 95
+      },
+      "sv_1774744087906": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 63552.55,
+        "rQ": 1137
+      },
+      "sv_1774744092292": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 530.91,
+        "rQ": 9
+      },
+      "sv_1774743922264": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 87058.61,
+        "rQ": 1628
+      },
+      "sv_1774744015844": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 3714.78,
+        "rQ": 72
+      },
+      "sv_1774743125155": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 112.97,
+        "rQ": 3
+      },
+      "sv_1774744114997": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 307.95,
+        "rQ": 5
+      },
+      "sv_1774744023558": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 58637.75,
+        "rQ": 1065
+      },
+      "sv_1774743928055": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 912.97,
+        "rQ": 13
+      },
+      "sv_1774743135842": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 244.95,
+        "rQ": 5
+      },
+      "sv_1774743983518": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 10404.16,
+        "rQ": 170
+      },
+      "sv_1774744074431": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 46001.72,
+        "rQ": 750
+      },
+      "sv_1774744029353": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 4035.05,
+        "rQ": 70
+      },
+      "sv_1774743991161": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 8298.65,
+        "rQ": 136
+      },
+      "sv_1774743182431": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 18378.66,
+        "rQ": 335
+      },
+      "sv_1774743071812": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 32826.34,
+        "rQ": 535
+      },
+      "sv_1774743146403": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 28380.34,
+        "rQ": 484
+      },
+      "sv_1774743933579": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 69550.58,
+        "rQ": 1249
+      },
+      "sv_1774744096220": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 79477.8,
+        "rQ": 1423
+      }
+    }
+  },
+  "month": "2026-03",
+  "store": "st_1774675101733",
+  "extrasLoja": {
+    "2026-03": {
+      "st_1774674831929": {
+        "rV": 647.53,
+        "rQ": 9
+      },
+      "st_1774675101733": {
+        "rV": 981.31,
+        "rQ": 9
+      },
+      "st_1774674821389": {
+        "rV": 249.92,
+        "rQ": 6
+      },
+      "st_1774674824994": {
+        "rV": 1163.9,
+        "rQ": 11
+      },
+      "st_1774674789236": {
+        "rV": 6193.15,
+        "rQ": 101
+      }
+    }
+  },
+  "lastImport": "01/03/2026"
+}
