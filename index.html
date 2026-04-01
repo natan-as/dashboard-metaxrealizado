@@ -176,9 +176,23 @@ td{padding:13px 14px;vertical-align:middle}
 .toast.ok{border-left:3px solid var(--accent1)}
 .toast.err{border-left:3px solid var(--accent2)}
 
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.btn-mes{padding:4px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-mes:hover{border-color:var(--text2);color:var(--text)}
+.btn-mes.ativo-1{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.btn-mes.ativo-2{background:var(--accent1);border-color:var(--accent1);color:#fff}
+.mes-dropdown{position:relative}
+.mes-dropdown-btn{display:inline-flex;align-items:center;padding:6px 14px;border-radius:var(--rs);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;min-width:160px;justify-content:space-between}
+.mes-dropdown-btn:hover{border-color:var(--accent1);color:var(--accent1)}
+.mes-dropdown-list{display:none;position:absolute;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 4px 16px rgba(26,45,90,0.12);z-index:300;min-width:180px;overflow:hidden}
+.mes-dropdown-list.open{display:block}
+.mes-dropdown-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text);transition:background .15s}
+.mes-dropdown-item:hover{background:var(--surface2)}
+.mes-dropdown-item.checked{color:var(--accent1);font-weight:700}
+.mes-check{width:16px;height:16px;border-radius:4px;border:2px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all .15s}
+.mes-dropdown-item.checked .mes-check{background:var(--accent1);border-color:var(--accent1);color:#fff}
+.mes-dropdown-divider{height:1px;background:var(--border);margin:4px 0}
+.mes-dropdown-action{padding:8px 14px;font-size:11px;color:var(--text2);cursor:pointer;font-weight:600}
+.mes-dropdown-action:hover{color:var(--accent2)}
 ::-webkit-scrollbar-thumb:hover{background:var(--text2)}
 
 /* LOGIN */
@@ -381,16 +395,30 @@ td{padding:13px 14px;vertical-align:middle}
     <div id="badge1" style="display:none"></div>
     <div id="badge2" style="display:none"></div>
 
-    <!-- FILTRO MÊS - dois seletores independentes -->
-    <div class="filter-bar" id="cmpFilterBar" style="display:none;justify-content:space-between">
-      <div style="display:flex;align-items:center;gap:8px">
+    <!-- FILTRO MÊS - dropdown multi-seleção independente por período -->
+    <div class="filter-bar" id="cmpFilterBar" style="display:none;justify-content:space-between;align-items:center">
+      <!-- Período 1 -->
+      <div style="display:flex;align-items:center;gap:10px">
         <div class="comp-leg-dot" style="width:28px;height:3px;background:#cc2020;border-radius:2px;flex-shrink:0"></div>
         <span class="filter-label">Período 1:</span>
-        <select id="selMes1" onchange="cmpDrawChart();cmpDrawCards()" style="padding:6px 12px;border-radius:var(--rs);border:1px solid var(--border);background:var(--surface2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text)"></select>
+        <div class="mes-dropdown" id="mesDropdown1">
+          <button class="mes-dropdown-btn" onclick="cmpToggleDropdown(1)">
+            <span id="mesLabel1">Selecionar mês</span>
+            <span style="font-size:10px;margin-left:6px">▼</span>
+          </button>
+          <div class="mes-dropdown-list" id="mesList1"></div>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span class="filter-label">Período 2:</span>
-        <select id="selMes2" onchange="cmpDrawChart();cmpDrawCards()" style="padding:6px 12px;border-radius:var(--rs);border:1px solid var(--border);background:var(--surface2);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--text)"></select>
+      <!-- Período 2 -->
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="mes-dropdown" id="mesDropdown2">
+          <button class="mes-dropdown-btn" onclick="cmpToggleDropdown(2)">
+            <span id="mesLabel2">Selecionar mês</span>
+            <span style="font-size:10px;margin-left:6px">▼</span>
+          </button>
+          <div class="mes-dropdown-list" id="mesList2"></div>
+        </div>
+        <span class="filter-label">Período 2</span>
         <div class="comp-leg-dot" style="width:28px;height:3px;background:#1a2d5a;border-radius:2px;flex-shrink:0"></div>
       </div>
     </div>
@@ -1641,7 +1669,7 @@ function cmpReadFile(file,periodo){
       const wb=XLSX.read(e.target.result,{type:'array'});
       const sheet=wb.SheetNames.find(n=>n.toLowerCase().includes('relat')||n.toLowerCase().includes('venda'))||wb.SheetNames[0];
       const ws=wb.Sheets[sheet];
-      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
       let tipo='',hi=-1;
       for(let i=0;i<Math.min(rows.length,8);i++){
         const r=rows[i].map(c=>String(c).trim());
@@ -1695,21 +1723,28 @@ function cmpReadFile(file,periodo){
           tempData[lojaKey][dataStr]=(tempData[lojaKey][dataStr]||0)+liq;
         });
       } else {
+        /* formato Loja|Data|Dia — Havaianas por item */
         const iLiq=hdrs.findIndex(h=>h==='Vlr Líquido'||h==='Vlr Liquido'||(h.includes('Vlr')&&h.includes('quido')));
+        if(iLiq<0){toast('Coluna Vlr Líquido não encontrada: '+file.name,'err');return;}
+        const anoAtual=new Date().getFullYear().toString();
+        let countOk=0, countSkip=0;
         rows.slice(hi+1).forEach(row=>{
           const lojaRaw=String(row[0]||'').trim();
           const dataStr=String(row[1]||'').trim();
-          if(!lojaRaw||!dataStr) return;
+          if(!lojaRaw||!dataStr||lojaRaw==='Loja') return;
+          /* dataStr deve ser DD/MM/AAAA */
+          const pts=dataStr.split('/');
+          if(pts.length!==3) return;
+          if(periodo===2 && pts[2]!==anoAtual){countSkip++;return;}
           const rawLiq=row[iLiq];
+          if(rawLiq===null||rawLiq===undefined||rawLiq==='') return;
           const liq=typeof rawLiq==='number'?rawLiq:parseFloat(String(rawLiq).replace(',','.'));
-          if(isNaN(liq)) return;
-          if(periodo===2){
-            const anoData=dataStr.split('/')[2];
-            if(anoData&&anoData!==new Date().getFullYear().toString()) return;
-          }
+          if(isNaN(liq)||liq===0) return;
           if(!tempData[lojaRaw]) tempData[lojaRaw]={};
           tempData[lojaRaw][dataStr]=(tempData[lojaRaw][dataStr]||0)+liq;
+          countOk++;
         });
+        console.log(`[cmp] ${file.name}: ${countOk} registros OK, ${countSkip} pulados (ano errado)`);
       }
 
       /* merge: para cada loja no tempData, substitui apenas as datas deste arquivo
@@ -1781,20 +1816,43 @@ function cmpUpdateBadges(){
 }
 
 function cmpGetAllLojas(){
-  /* Usa as lojas cadastradas no Meta X Realizado como fonte principal.
-     Se não houver lojas cadastradas, usa os nomes extraídos dos arquivos importados. */
-  if(S.stores && S.stores.length){
-    return S.stores.map(s=>s.name).sort();
-  }
+  /* Usa as lojas cadastradas no Admin como fonte das abas.
+     Os dados no cmpData podem ter nomes diferentes — o match é feito no cmpGetDailyData. */
+  if(S.stores && S.stores.length) return S.stores.map(s=>s.name).sort();
   const s=new Set([...Object.keys(cmpData[1]||{}),...Object.keys(cmpData[2]||{})]);
   return [...s].sort();
 }
-function cmpIsHav(l){return l.toLowerCase().includes('havaianas')||l.toLowerCase().includes('arenque');}
-function cmpIsHer(l){return l.toLowerCase().includes('hering');}
+function cmpIsHav(l){
+  if(cmpIsHer(l)) return false; /* Hering nunca é Havaianas */
+  const lc=l.toLowerCase();
+  /* nome do arquivo começa com H+número */
+  if(/^h\d+\s*-/i.test(l)) return true;
+  /* nome cadastrado contém referência a Havaianas ou a lojas conhecidas */
+  return lc.includes('havaianas')||lc.includes('havainas')||
+         lc.includes('sinop')||lc.includes('sorriso')||lc.includes('goiabeiras')||
+         lc.includes('várzea')||lc.includes('varzea')||lc.includes('estação')||
+         lc.includes('estacao')||lc.includes('américas')||lc.includes('americas')||
+         lc.includes('rondon')||lc.includes('pantanal')||lc.includes('lucas');
+}
+function cmpIsHer(l){
+  const lc=l.toLowerCase();
+  return lc.includes('hering')||lc.includes('arenque');
+}
 function cmpGetLojasByGrupo(grupo){
   return cmpGetAllLojas().filter(l=>grupo==='havaianas'?cmpIsHav(l):grupo==='hering'?cmpIsHer(l):true);
 }
-function cmpNomeCurto(l){return l.replace(/^H\d+\s*-\s*/i,'').replace(/HAVAIANAS\s*/i,'').replace(/HERING\s*/i,'').trim();}
+function cmpNomeCurto(l){
+  return l
+    .replace(/^H\d+\s*-\s*/i,'')
+    .replace(/\bHAVAIANAS\b\s*/gi,'')
+    .replace(/\bHAVAINAS\b\s*/gi,'')
+    .replace(/\bHERING\b\s*/gi,'')
+    .replace(/\bPARK\s+SHOPPING\b\s*/gi,'')
+    .replace(/\bSHOPPING\b\s*/gi,'')
+    .replace(/\bCENTRO\b\s*/gi,'')
+    .trim()
+    || l;
+}
 
 /* Retorna a chave usada no cmpData para uma loja cadastrada.
    O arquivo importado pode ter um nome ligeiramente diferente do cadastrado.
@@ -1913,23 +1971,33 @@ function cmpTemMultiplosMeses(){
 }
 
 function cmpGetDailyData(periodo, mesFiltro){
-  /* Usa as chaves reais do cmpData diretamente para garantir que os dados apareçam.
-     O filtro de loja aplica match pelo grupo (hav/her) ou loja específica. */
   const dados=cmpData[periodo]||{};
-  const result={};
+  const todasChaves=Object.keys(dados);
+  let chaves=[];
 
-  /* determina quais chaves usar baseado na seleção ativa */
-  let chaves=Object.keys(dados);
-  if(cmpActiveStore==='all-hav'){
-    chaves=chaves.filter(k=>cmpIsHav(k));
+  if(cmpActiveStore==='all'){
+    chaves=todasChaves;
+  } else if(cmpActiveStore==='all-hav'){
+    /* lojas Havaianas: chaves que contêm havaianas/havainas OU que fazem match
+       com lojas cadastradas como Havaianas */
+    const lojasCadHav=cmpGetAllLojas().filter(cmpIsHav);
+    chaves=todasChaves.filter(k=>{
+      if(cmpIsHav(k)) return true;
+      return lojasCadHav.some(lc=>cmpMatchKey(k,lc));
+    });
   } else if(cmpActiveStore==='all-her'){
-    chaves=chaves.filter(k=>cmpIsHer(k));
-  } else if(cmpActiveStore!=='all'){
-    /* loja específica: tenta match exato ou parcial */
-    const chave=cmpMatchLoja(cmpActiveStore,periodo);
+    const lojasCadHer=cmpGetAllLojas().filter(cmpIsHer);
+    chaves=todasChaves.filter(k=>{
+      if(cmpIsHer(k)) return true;
+      return lojasCadHer.some(lc=>cmpMatchKey(k,lc));
+    });
+  } else {
+    /* loja específica cadastrada — busca a chave correspondente no cmpData */
+    const chave=todasChaves.find(k=>cmpMatchKey(k,cmpActiveStore));
     chaves=chave?[chave]:[];
   }
 
+  const result={};
   chaves.forEach(chave=>{
     const d=dados[chave];
     if(!d) return;
@@ -1937,7 +2005,8 @@ function cmpGetDailyData(periodo, mesFiltro){
       const pts=dataStr.split('/');
       if(pts.length!==3) return;
       const[dd,mm,yyyy]=pts;
-      if(mesFiltro && (mm+'/'+yyyy)!==mesFiltro) return;
+      /* mesFiltro pode ser null (sem filtro) ou array de 'MM/AAAA' */
+      if(mesFiltro&&!mesFiltro.includes(mm+'/'+yyyy)) return;
       const dia=parseInt(dd,10);
       result[dia]=(result[dia]||0)+val;
     });
@@ -1945,9 +2014,38 @@ function cmpGetDailyData(periodo, mesFiltro){
   return result;
 }
 
+/* verifica se a chave do cmpData corresponde ao nome da loja cadastrada */
+function cmpMatchKey(chave, nomeCad){
+  const kl=chave.toLowerCase();
+  const nl=nomeCad.toLowerCase();
+  if(kl===nl) return true;
+  /* remove prefixo H474 - da chave antes de comparar */
+  const kShort=chave.replace(/^H\d+\s*-\s*/i,'').toLowerCase();
+  if(kShort===nl) return true;
+
+  /* valida que a franquia bate: se o nome cadastrado é Hering, a chave deve ser Hering,
+     e vice-versa para Havaianas */
+  const cadEHering=cmpIsHer(nomeCad);
+  const cadEHav=cmpIsHav(nomeCad);
+  const chaveEHering=cmpIsHer(chave);
+  const chaveEHav=cmpIsHav(chave)||/^h\d+\s*-/i.test(chave);
+  if(cadEHering && !chaveEHering) return false;
+  if(cadEHav && chaveEHering) return false;
+
+  /* palavras genéricas que não servem para identificar uma loja específica */
+  const stopWords=new Set(['shopping','loja','lojas','store','park','centro','todas','havaianas','hering','havainas','de','do','da','dos','das','e','a','o']);
+  /* palavras únicas do nome cadastrado (sem stopwords, mín 3 chars) */
+  const palavrasUnicas=nl.split(/\s+/).filter(p=>p.length>=3&&!stopWords.has(p));
+  if(!palavrasUnicas.length) return false;
+  /* TODAS as palavras únicas do cadastrado devem estar na chave */
+  return palavrasUnicas.every(p=>kl.includes(p));
+}
+
 function cmpGetAno(periodo, mesFiltro){
-  /* retorna o ano dos dados filtrados */
-  if(mesFiltro) return mesFiltro.split('/')[1]||String(periodo===1?'Ano Anterior':'Ano Atual');
+  if(mesFiltro&&mesFiltro.length){
+    /* pega o ano do primeiro mês selecionado */
+    return mesFiltro[0].split('/')[1]||String(periodo===1?'Período 1':'Período 2');
+  }
   for(const lojaData of Object.values(cmpData[periodo]||{})){
     for(const dataStr of Object.keys(lojaData)){
       const pts=dataStr.split('/');
@@ -1974,43 +2072,86 @@ function cmpRefresh(){
   if(empty) empty.style.display='none';
   if(chartCard) chartCard.style.display='block';
 
-  /* seletor de mês: aparece sempre que há dados importados */
+  /* barra de meses: aparece sempre que há dados importados */
   if(filterBar){
     filterBar.style.display='flex';
-    /* seletor 1 — meses do Período 1 */
-    const sel1=document.getElementById('selMes1');
-    if(sel1){
-      const meses1=cmpGetMesesDisponiveis(1);
-      const cur1=sel1.value;
-      const valido1=meses1.includes(cur1)?cur1:meses1[meses1.length-1]||'';
-      sel1.innerHTML=meses1.length
-        ?meses1.map(m=>`<option value="${m}"${m===valido1?' selected':''}>${nomeMes(m.split('/')[0])+'/'+m.split('/')[1]}</option>`).join('')
-        :'<option value="">Nenhum dado</option>';
-    }
-    /* seletor 2 — meses do Período 2 */
-    const sel2=document.getElementById('selMes2');
-    if(sel2){
-      const meses2=cmpGetMesesDisponiveis(2);
-      const cur2=sel2.value;
-      const valido2=meses2.includes(cur2)?cur2:meses2[meses2.length-1]||'';
-      sel2.innerHTML=meses2.length
-        ?meses2.map(m=>`<option value="${m}"${m===valido2?' selected':''}>${nomeMes(m.split('/')[0])+'/'+m.split('/')[1]}</option>`).join('')
-        :'<option value="">Nenhum dado</option>';
-    }
+    cmpRenderBotoesMeses(1);
+    cmpRenderBotoesMeses(2);
   }
-
   cmpDrawChart();
   cmpDrawCards();
 }
 
 
-function cmpGetMesFiltro(periodo){
-  /* retorna 'MM/AAAA' do seletor — se vazio, usa o mês mais recente disponível */
-  const s=document.getElementById('selMes'+periodo);
-  if(s&&s.value) return s.value;
-  /* fallback: último mês disponível no período */
+/* meses selecionados por período: Set de 'MM/AAAA' */
+let cmpMesesSel={1:new Set(),2:new Set()};
+
+function cmpToggleDropdown(periodo){
+  const list=document.getElementById('mesList'+periodo);
+  /* fecha o outro */
+  const outro=document.getElementById('mesList'+(periodo===1?2:1));
+  if(outro) outro.classList.remove('open');
+  list.classList.toggle('open');
+}
+
+/* fecha dropdowns ao clicar fora */
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.mes-dropdown')){
+    document.querySelectorAll('.mes-dropdown-list').forEach(l=>l.classList.remove('open'));
+  }
+});
+
+function cmpToggleMes(periodo, mes){
+  if(cmpMesesSel[periodo].has(mes)) cmpMesesSel[periodo].delete(mes);
+  else cmpMesesSel[periodo].add(mes);
+  cmpRenderBotoesMeses(periodo);
+  cmpDrawChart();
+  cmpDrawCards();
+}
+
+function cmpRenderBotoesMeses(periodo){
+  const list=document.getElementById('mesList'+periodo);
+  const label=document.getElementById('mesLabel'+periodo);
+  if(!list||!label) return;
   const meses=cmpGetMesesDisponiveis(periodo);
-  return meses.length?meses[meses.length-1]:null;
+  const ativos=cmpMesesSel[periodo];
+
+  /* remove meses que não existem mais */
+  [...ativos].forEach(m=>{ if(!meses.includes(m)) ativos.delete(m); });
+
+  list.innerHTML='';
+
+  /* opção limpar */
+  if(ativos.size>0){
+    const clr=document.createElement('div');
+    clr.className='mes-dropdown-action';
+    clr.textContent='✕ Limpar seleção';
+    clr.onclick=(e)=>{e.stopPropagation();ativos.clear();cmpRenderBotoesMeses(periodo);cmpDrawChart();cmpDrawCards();};
+    list.appendChild(clr);
+    const div=document.createElement('div');
+    div.className='mes-dropdown-divider';
+    list.appendChild(div);
+  }
+
+  meses.forEach(m=>{
+    const ativo=ativos.has(m);
+    const item=document.createElement('div');
+    item.className='mes-dropdown-item'+(ativo?' checked':'');
+    item.innerHTML=`<span class="mes-check">${ativo?'✓':''}</span>${nomeMes(m.split('/')[0])+'/'+m.split('/')[1]}`;
+    item.onclick=(e)=>{e.stopPropagation();cmpToggleMes(periodo,m);};
+    list.appendChild(item);
+  });
+
+  /* atualiza label do botão */
+  if(ativos.size===0) label.textContent='Selecionar mês';
+  else if(ativos.size===1) label.textContent=nomeMes([...ativos][0].split('/')[0])+'/'+[...ativos][0].split('/')[1];
+  else label.textContent=ativos.size+' meses selecionados';
+}
+
+function cmpGetMesFiltro(periodo){
+  /* retorna array de 'MM/AAAA' selecionados, ou null se nenhum (usa todos os dados) */
+  const sel=[...cmpMesesSel[periodo]];
+  return sel.length?sel:null;
 }
 
 function cmpDrawChart(){
@@ -2034,7 +2175,11 @@ function cmpDrawChart(){
 
   const ano1=cmpGetAno(1,mesFiltro1);
   const ano2=cmpGetAno(2,mesFiltro2);
-  const mesTxt='';
+  /* monta texto dos meses selecionados */
+  const fmtMeses=(mf)=>mf?mf.map(m=>nomeMes(m.split('/')[0])+'/'+m.split('/')[1]).join(', '):'';
+  const mesTxt1=mesFiltro1?(' — '+fmtMeses(mesFiltro1)):'';
+  const mesTxt2=mesFiltro2?(' — '+fmtMeses(mesFiltro2)):'';
+  const mesTxt=mesTxt1||mesTxt2?(' — '+fmtMeses(mesFiltro1||mesFiltro2)):'';
 
   const ct=document.getElementById('cmpChartTitle');
   if(ct) ct.textContent='Evolução Diária — '+titulo+mesTxt;
@@ -2078,8 +2223,9 @@ function cmpDrawCards(){
   const diffIcon=diff>=0?'▲':'▼';
   const ano1=cmpGetAno(1,mesFiltro1);
   const ano2=cmpGetAno(2,mesFiltro2);
-  const mesTxt1=mesFiltro1?nomeMes(mesFiltro1.split('/')[0])+'/'+mesFiltro1.split('/')[1]:'';
-  const mesTxt2=mesFiltro2?nomeMes(mesFiltro2.split('/')[0])+'/'+mesFiltro2.split('/')[1]:'';
+  const fmtM=(mf)=>mf?mf.map(m=>nomeMes(m.split('/')[0])+'/'+m.split('/')[1]).join(', '):'';
+  const mesTxt1=fmtM(mesFiltro1);
+  const mesTxt2=fmtM(mesFiltro2);
   const el=document.getElementById('cmpSummaryCards');
   if(!el) return;
   el.innerHTML=`
