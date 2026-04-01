@@ -2019,26 +2019,28 @@ function cmpMatchKey(chave, nomeCad){
   const kl=chave.toLowerCase();
   const nl=nomeCad.toLowerCase();
   if(kl===nl) return true;
-  /* remove prefixo H474 - da chave antes de comparar */
   const kShort=chave.replace(/^H\d+\s*-\s*/i,'').toLowerCase();
   if(kShort===nl) return true;
 
-  /* valida que a franquia bate: se o nome cadastrado é Hering, a chave deve ser Hering,
-     e vice-versa para Havaianas */
+  /* valida que a franquia bate */
   const cadEHering=cmpIsHer(nomeCad);
   const cadEHav=cmpIsHav(nomeCad);
   const chaveEHering=cmpIsHer(chave);
-  const chaveEHav=cmpIsHav(chave)||/^h\d+\s*-/i.test(chave);
   if(cadEHering && !chaveEHering) return false;
   if(cadEHav && chaveEHering) return false;
 
-  /* palavras genéricas que não servem para identificar uma loja específica */
-  const stopWords=new Set(['shopping','loja','lojas','store','park','centro','todas','havaianas','hering','havainas','de','do','da','dos','das','e','a','o']);
-  /* palavras únicas do nome cadastrado (sem stopwords, mín 3 chars) */
+  const stopWords=new Set(['shopping','loja','lojas','store','park','centro','todas','havaianas','hering','havainas','de','do','da','dos','das','e','a','o','plaza']);
   const palavrasUnicas=nl.split(/\s+/).filter(p=>p.length>=3&&!stopWords.has(p));
   if(!palavrasUnicas.length) return false;
-  /* TODAS as palavras únicas do cadastrado devem estar na chave */
-  return palavrasUnicas.every(p=>kl.includes(p));
+
+  /* cada palavra do nome cadastrado deve estar na chave — aceita prefixo também
+     ex: 'rondonópolis' bate com 'rondon' na chave */
+  return palavrasUnicas.every(p=>{
+    if(kl.includes(p)) return true;
+    /* tenta prefixo: palavra da chave começa com os primeiros 5 chars da palavra cadastrada */
+    const prefix=p.slice(0,5);
+    return prefix.length>=4 && kl.split(/\s+/).some(w=>w.startsWith(prefix)||p.startsWith(w.slice(0,5)));
+  });
 }
 
 function cmpGetAno(periodo, mesFiltro){
