@@ -1267,8 +1267,8 @@ function readXLSX(file){
 
       } else {
         /* ── RELATÓRIO HAVAIANAS */
-        /* data baseada no mês selecionado */
         if(S.month){ const [y,m]=S.month.split('-'); lastImportDate=`01/${m}/${y}`; }
+        const iLoja=hdrs.findIndex(h=>h==='Loja'||h==='Empresa'||h==='CNPJ Empresa');
         const iVend =ci('Vendedor');
         const iItens=ci('Itens Vendidos');
         const iLiq  =hdrs.findIndex(h=>h==='Vlr Líquido'||h==='Vlr Liquido'||h.replace(/[^\w]/g,'').toLowerCase()==='vlrliquido');
@@ -1291,28 +1291,55 @@ function readXLSX(file){
 
           const nomeNorm=nome.toLowerCase().replace(/[áàâãä]/g,'a').replace(/[éèê]/g,'e');
 
-          /* Venda Funcionário / Vendedor Free → soma ao extra da loja sem aparecer no ranking */
+          /* identifica a loja desta linha pelo nome/prefixo */
+          let lojaObj=null;
+          if(iLoja>=0){
+            const lojaRaw=String(row[iLoja]||'').trim();
+            if(lojaRaw){
+              /* tenta match direto pelo nome ou pelo prefixo H474 */
+              lojaObj=S.stores.find(s=>{
+                const nl=s.name.toLowerCase();
+                const lr=lojaRaw.toLowerCase();
+                if(nl===lr) return true;
+                const palavras=nl.split(/\s+/).filter(p=>p.length>=4&&!['shopping','havaianas','havainas','hering','park','centro'].includes(p));
+                return palavras.length>0&&palavras.every(p=>lr.includes(p)||lr.split(/\s+/).some(w=>w.startsWith(p.slice(0,5))||p.startsWith(w.slice(0,5))));
+              });
+            }
+          }
+
+          /* Venda Funcionário / Vendedor Free → soma ao extra da loja */
           if(FUNC_HAV.some(f=>nomeNorm.includes(f.replace(/[áàâãä]/g,'a')))){
-            /* tenta identificar a loja pelo vendedor encontrado anteriormente ou pela loja do mês */
-            const lojaId = S.stores.find(s=>s.name.toLowerCase().includes('havaianas'))?.id;
-            if(lojaId){
-              if(!pendingExtra[lojaId]) pendingExtra[lojaId]={rV:0,rQ:0};
-              pendingExtra[lojaId].rV+=liq;
-              pendingExtra[lojaId].rQ+=itens;
+            const lid=lojaObj?lojaObj.id:S.stores.find(s=>s.name.toLowerCase().includes('havaianas'))?.id;
+            if(lid){
+              if(!pendingExtra[lid]) pendingExtra[lid]={rV:0,rQ:0};
+              pendingExtra[lid].rV+=liq;
+              pendingExtra[lid].rQ+=itens;
             }
             return;
           }
 
-          const seller=S.sellers.find(s=>s.name.toLowerCase()===nome.toLowerCase());
+          /* busca vendedor pelo nome E pela loja desta linha */
+          let seller=null;
+          if(lojaObj){
+            /* primeiro tenta match exato por nome + loja */
+            seller=S.sellers.find(s=>s.name.toLowerCase()===nome.toLowerCase()&&s.storeId===lojaObj.id);
+          }
+          /* fallback: só pelo nome (vendedor pode estar cadastrado em loja diferente) */
+          if(!seller) seller=S.sellers.find(s=>s.name.toLowerCase()===nome.toLowerCase());
+
           if(seller){
-            const ex=pending.find(p=>p.id===seller.id);
+            /* registra separado por loja: chave = sellerId + lojaId */
+            const lojaId=lojaObj?lojaObj.id:seller.storeId;
+            const chaveUnica=seller.id+'_'+lojaId;
+            const ex=pending.find(p=>p._chave===chaveUnica);
             if(ex){ex.rV+=liq;ex.rQ+=itens;}
             else{
-              const st=S.stores.find(x=>x.id===seller.storeId);
-              pending.push({id:seller.id,name:seller.name,store:st?st.name:'',rV:liq,rQ:itens});
+              const st=S.stores.find(x=>x.id===lojaId)||S.stores.find(x=>x.id===seller.storeId);
+              pending.push({_chave:chaveUnica,id:seller.id,name:seller.name,store:st?st.name:'',rV:liq,rQ:itens});
             }
           } else {
-            if(!missed.includes(nome)) missed.push(nome);
+            const chave=lojaObj?`${nome} (${lojaObj.name})`:nome;
+            if(!missed.includes(chave)) missed.push(chave);
           }
         });
       }
