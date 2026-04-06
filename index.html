@@ -1280,22 +1280,25 @@ function readXLSX(file){
 
       if(tipoRelatorio==='hering'){
         /* ── RELATÓRIO HERING ─────────────────────────────────────
-           Colunas: Vendedor | CNPJ Empresa | Qtd. Itens Vendidos (Líquido) | Valor Líquido (R$)
-           Loja identificada pelo sufixo do CNPJ (últimos 7 chars: XXXX-XX)
+           Colunas: Data | Vendedor | Empresa | CNPJ Empresa |
+                    Qtd. Atendimentos | Qtd. Itens Vendidos (Líquido) |
+                    Valor Bruto | Descontos | Trocas | Valor Líquido |
+                    Cancelado | Ticket Médio (R$) | Produtos por Atendimento (PA)
         ──────────────────────────────────────────────────────── */
-        const iData = ci('Data');
-        /* extrai data do relatório — pega primeira célula com valor */
+        const iData  = ci('Data');
         if(iData >= 0){
           const primeiraData = rows.slice(hi+1).map(r=>String(r[iData]||'').trim()).find(v=>v);
           if(primeiraData){
-            /* formato MM/AAAA → converte para DD/MM/AAAA mostrando último dia importado */
             lastImportDate = primeiraData.length === 7 ? '01/' + primeiraData : primeiraData;
           }
         }
-        const iVend = ci('Vendedor');
-        const iCNPJ = ci('CNPJ Empresa');
+        const iVend  = ci('Vendedor');
+        const iCNPJ  = ci('CNPJ Empresa');
+        const iAtend = hdrs.findIndex(h=>h.includes('Atendimentos'));
         const iItens = hdrs.findIndex(h=>h.includes('Itens Vendidos'));
         const iLiq   = hdrs.findIndex(h=>h.includes('Valor Líquido')||h.includes('Valor Liquido'));
+        const iTM    = hdrs.findIndex(h=>h.includes('Ticket Médio')||h.includes('Ticket Medio'));
+        const iPA    = hdrs.findIndex(h=>h.includes('Produtos por Atendimento')||h.includes('P.A.'));
 
         if(iVend<0||iCNPJ<0||iItens<0||iLiq<0){
           toast('Colunas Hering não encontradas. Verifique o arquivo.','err'); return;
@@ -1313,10 +1316,20 @@ function readXLSX(file){
           const rawLiq=row[iLiq];
           if(typeof rawLiq==='string'&&rawLiq.startsWith('=')) return;
           const liq=typeof rawLiq==='number'?rawLiq:parseFloat(String(rawLiq).replace(',','.'));
-          if(isNaN(liq)||liq===0) return;
+          if(isNaN(liq)) return;
 
           const rawItens=row[iItens];
           const itens=typeof rawItens==='number'?rawItens:parseFloat(String(rawItens).replace(',','.'))||0;
+
+          const rawAtend=iAtend>=0?row[iAtend]:null;
+          const atend=typeof rawAtend==='number'?rawAtend:parseFloat(String(rawAtend||'').replace(',','.'))||0;
+
+          /* TM e PA: usa os valores diretos do relatório quando disponíveis */
+          const rawTM=iTM>=0?row[iTM]:null;
+          const tm=typeof rawTM==='number'?rawTM:parseFloat(String(rawTM||'').replace(',','.'))||0;
+
+          const rawPA=iPA>=0?row[iPA]:null;
+          const pa=typeof rawPA==='number'?rawPA:parseFloat(String(rawPA||'').replace(',','.'))||0;
 
           const lojaObj=S.stores.find(s=>s.name.toLowerCase()===nomeLoja.toLowerCase());
           const nomeNorm=nome.toLowerCase();
@@ -1324,9 +1337,10 @@ function readXLSX(file){
           /* Vendedor Loja → soma ao extra da loja sem aparecer no ranking */
           if(FUNC_HER.some(f=>nomeNorm.includes(f))){
             if(lojaObj){
-              if(!pendingExtra[lojaObj.id]) pendingExtra[lojaObj.id]={rV:0,rQ:0};
+              if(!pendingExtra[lojaObj.id]) pendingExtra[lojaObj.id]={rV:0,rQ:0,rT:0};
               pendingExtra[lojaObj.id].rV+=liq;
               pendingExtra[lojaObj.id].rQ+=itens;
+              pendingExtra[lojaObj.id].rT+=atend;
             }
             return;
           }
@@ -1339,10 +1353,13 @@ function readXLSX(file){
 
           if(seller){
             const ex=pending.find(p=>p.id===seller.id);
-            if(ex){ex.rV+=liq;ex.rQ+=itens;}
-            else{
+            if(ex){
+              ex.rV+=liq; ex.rQ+=itens; ex.rT+=atend;
+              /* PA e TM: recalcula pela média ponderada de atendimentos */
+              ex.rPA=ex.rT>0?(ex.rQ/ex.rT):pa;
+            } else {
               const st=S.stores.find(x=>x.id===seller.storeId);
-              pending.push({id:seller.id,name:seller.name,store:st?st.name:'',rV:liq,rQ:itens});
+              pending.push({id:seller.id,name:seller.name,store:st?st.name:'',rV:liq,rQ:itens,rT:atend,rPA:atend>0?(itens/atend):pa});
             }
           } else {
             const chave=`${nome} (${nomeLoja})`;
