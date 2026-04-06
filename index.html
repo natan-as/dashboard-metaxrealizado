@@ -1318,18 +1318,12 @@ function readXLSX(file){
           const liq=typeof rawLiq==='number'?rawLiq:parseFloat(String(rawLiq).replace(',','.'));
           if(isNaN(liq)) return;
 
-          const rawItens=row[iItens];
-          const itens=typeof rawItens==='number'?rawItens:parseFloat(String(rawItens).replace(',','.'))||0;
+          /* garante conversão correta mesmo quando valores vêm como string */
+          const flt=x=>typeof x==='number'?x:parseFloat(String(x||'').replace(',','.'))||0;
 
-          const rawAtend=iAtend>=0?row[iAtend]:null;
-          const atend=typeof rawAtend==='number'?rawAtend:parseFloat(String(rawAtend||'').replace(',','.'))||0;
-
-          /* TM e PA: usa os valores diretos do relatório quando disponíveis */
-          const rawTM=iTM>=0?row[iTM]:null;
-          const tm=typeof rawTM==='number'?rawTM:parseFloat(String(rawTM||'').replace(',','.'))||0;
-
-          const rawPA=iPA>=0?row[iPA]:null;
-          const pa=typeof rawPA==='number'?rawPA:parseFloat(String(rawPA||'').replace(',','.'))||0;
+          const itens=flt(row[iItens]);
+          const atend=iAtend>=0?flt(row[iAtend]):0;
+          /* TM e PA serão calculados ao final pelo acumulado (liq/atend e itens/atend) */
 
           const lojaObj=S.stores.find(s=>s.name.toLowerCase()===nomeLoja.toLowerCase());
           const nomeNorm=nome.toLowerCase();
@@ -1355,11 +1349,11 @@ function readXLSX(file){
             const ex=pending.find(p=>p.id===seller.id);
             if(ex){
               ex.rV+=liq; ex.rQ+=itens; ex.rT+=atend;
-              /* PA e TM: recalcula pela média ponderada de atendimentos */
-              ex.rPA=ex.rT>0?(ex.rQ/ex.rT):pa;
+              /* TM e PA recalculados do acumulado */
+              ex.rPA=ex.rT>0?ex.rQ/ex.rT:0;
             } else {
               const st=S.stores.find(x=>x.id===seller.storeId);
-              pending.push({id:seller.id,name:seller.name,store:st?st.name:'',rV:liq,rQ:itens,rT:atend,rPA:atend>0?(itens/atend):pa});
+              pending.push({id:seller.id,name:seller.name,store:st?st.name:'',rV:liq,rQ:itens,rT:atend,rPA:atend>0?itens/atend:0});
             }
           } else {
             const chave=`${nome} (${nomeLoja})`;
