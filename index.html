@@ -52,7 +52,7 @@ header{background:var(--accent1);border-bottom:3px solid var(--accent2);padding:
 main{padding:24px 28px;max-width:1400px;margin:0 auto}
 
 /* SUMMARY */
-.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.cards{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:24px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden;box-shadow:0 2px 8px rgba(26,45,90,0.07);min-width:0}
 .card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent1)}
 .card.c-blue::before{background:var(--accent2)}
@@ -846,9 +846,11 @@ function getEnriched() {
   } else {
     sellers = S.sellers.filter(s=>s.storeId===S.store);
   }
+  /* remove vendedores inativos */
+  sellers = sellers.filter(s=>s.ativo!==false);
   const key = S.month;
   return sellers.map(s => {
-    const m = (S.metas[key]||{})[s.id] || {mV:0,mQ:0,rV:0,rQ:0};
+    const m = (S.metas[key]||{})[s.id] || {mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
     const st = S.stores.find(x=>x.id===s.storeId);
     const pV = m.mV>0 ? (m.rV/m.mV)*100 : 0;
     const pQ = m.mQ>0 ? (m.rQ/m.mQ)*100 : 0;
@@ -887,14 +889,20 @@ function drawDash() {
   const totRV=list.reduce((s,v)=>s+(v.rV||0),0) + extraRV;
   const totMQ=list.reduce((s,v)=>s+(v.mQ||0),0);
   const totRQ=list.reduce((s,v)=>s+(v.rQ||0),0) + extraRQ;
+  const totRT=list.reduce((s,v)=>s+(v.rT||0),0) + (Object.values(extras).reduce((s,e)=>s+(e.rT||0),0));
   const pctV = totMV>0?(totRV/totMV)*100:0;
   const bat  = list.filter(v=>v.pV>=100).length;
+  /* TM = Vlr Líquido / Tickets; PA = Itens / Tickets */
+  const tm = totRT>0?(totRV/totRT):0;
+  const pa = totRT>0?(totRQ/totRT):0;
 
   document.getElementById('cards').innerHTML=`
     <div class="card"><div class="clabel">Meta Valor</div><div class="cval">${brl(totMV)}</div><div class="csub">${mLabel(S.month)}</div></div>
     <div class="card c-blue"><div class="clabel">Realizado Líquido</div><div class="cval">${brl(totRV)}</div><div class="csub">${pctV.toFixed(1)}% da meta</div></div>
     <div class="card ${pctV>=100?'':'c-warn'}"><div class="clabel">Progresso Geral</div><div class="cval">${pctV.toFixed(1)}%</div><div class="csub">Falta ${brl(Math.max(0,totMV-totRV))}</div></div>
     <div class="card c-blue"><div class="clabel">Itens Vendidos</div><div class="cval">${totRQ.toLocaleString('pt-BR')}</div><div class="csub">Meta: ${totMQ.toLocaleString('pt-BR')} itens</div></div>
+    <div class="card"><div class="clabel">Ticket Médio (T.M.)</div><div class="cval">${brl(tm)}</div><div class="csub">${totRT.toLocaleString('pt-BR')} atendimentos</div></div>
+    <div class="card"><div class="clabel">Peças / Atend. (P.A.)</div><div class="cval">${pa.toFixed(2)}</div><div class="csub">peças por atendimento</div></div>
     <div class="card"><div class="clabel">Bateram a Meta</div><div class="cval">${bat} / ${list.length}</div><div class="csub">vendedores</div></div>`;
 
   document.getElementById('rbadge').textContent = list.length+' vendedor'+(list.length!==1?'es':'');
@@ -1068,14 +1076,32 @@ function rVends(){
   if(!S.sellers.length){el.innerHTML='<p style="font-size:13px;color:var(--text2)">Nenhum vendedor.</p>';return;}
   el.innerHTML=S.sellers.map(s=>{
     const st=S.stores.find(x=>x.id===s.storeId);
-    return `<div class="sitem" id="sitem_${s.id}">
-      <div><div style="font-weight:600;font-size:14px">${s.name}</div><div style="font-size:12px;color:var(--text2)">${st?st.name:'–'}</div></div>
-      <div style="display:flex;gap:6px">
+    const ativo=s.ativo!==false;
+    return `<div class="sitem" id="sitem_${s.id}" style="opacity:${ativo?1:0.5}">
+      <div>
+        <div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px">
+          ${s.name}
+          ${!ativo?'<span style="font-size:10px;background:#f0f0f0;border:1px solid #ccc;border-radius:10px;padding:1px 8px;color:#888;font-weight:600">Inativo</span>':''}
+        </div>
+        <div style="font-size:12px;color:var(--text2)">${st?st.name:'–'}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="toggleVendAtivo('${s.id}')" title="${ativo?'Inativar':'Ativar'}" style="color:${ativo?'var(--accent2)':'#16a34a'}">
+          ${ativo?'⏸ Inativar':'▶ Ativar'}
+        </button>
         <button class="btn btn-ghost btn-sm" onclick="editVend('${s.id}')">✏️ Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="rmVend('${s.id}')">✕</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function toggleVendAtivo(id){
+  const s=S.sellers.find(x=>x.id===id);
+  if(!s) return;
+  s.ativo = s.ativo===false ? true : false;
+  save(); rVends(); draw();
+  toast(s.ativo===false?'Vendedor inativado':'Vendedor ativado');
 }
 
 function editVend(id){
@@ -1328,9 +1354,11 @@ function readXLSX(file){
         /* ── RELATÓRIO HAVAIANAS */
         if(S.month){ const [y,m]=S.month.split('-'); lastImportDate=`01/${m}/${y}`; }
         const iLoja=hdrs.findIndex(h=>h==='Loja'||h==='Empresa'||h==='CNPJ Empresa');
-        const iVend =ci('Vendedor');
-        const iItens=ci('Itens Vendidos');
-        const iLiq  =hdrs.findIndex(h=>h==='Vlr Líquido'||h==='Vlr Liquido'||h.replace(/[^\w]/g,'').toLowerCase()==='vlrliquido');
+        const iVend   =ci('Vendedor');
+        const iItens  =ci('Itens Vendidos');
+        const iLiq    =hdrs.findIndex(h=>h==='Vlr Líquido'||h==='Vlr Liquido'||h.replace(/[^\w]/g,'').toLowerCase()==='vlrliquido');
+        const iTickets=ci('Tickets');
+        const iPA     =ci('P.A.');
 
         if(iVend<0||iItens<0||iLiq<0){
           toast('Colunas Havaianas não encontradas. Verifique o arquivo.','err'); return;
@@ -1348,6 +1376,12 @@ function readXLSX(file){
           const rawItens=row[iItens];
           const itens=typeof rawItens==='number'?rawItens:parseFloat(String(rawItens).replace(',','.'))||0;
 
+          const rawTickets=iTickets>=0?row[iTickets]:null;
+          const tickets=typeof rawTickets==='number'?rawTickets:parseFloat(String(rawTickets||'').replace(',','.'))||0;
+
+          const rawPA=iPA>=0?row[iPA]:null;
+          const pa=typeof rawPA==='number'?rawPA:parseFloat(String(rawPA||'').replace(',','.'))||0;
+
           const nomeNorm=nome.toLowerCase().replace(/[áàâãä]/g,'a').replace(/[éèê]/g,'e');
 
           /* identifica a loja desta linha pelo nome/prefixo */
@@ -1355,7 +1389,6 @@ function readXLSX(file){
           if(iLoja>=0){
             const lojaRaw=String(row[iLoja]||'').trim();
             if(lojaRaw){
-              /* tenta match direto pelo nome ou pelo prefixo H474 */
               lojaObj=S.stores.find(s=>{
                 const nl=s.name.toLowerCase();
                 const lr=lojaRaw.toLowerCase();
@@ -1370,9 +1403,10 @@ function readXLSX(file){
           if(FUNC_HAV.some(f=>nomeNorm.includes(f.replace(/[áàâãä]/g,'a')))){
             const lid=lojaObj?lojaObj.id:S.stores.find(s=>s.name.toLowerCase().includes('havaianas'))?.id;
             if(lid){
-              if(!pendingExtra[lid]) pendingExtra[lid]={rV:0,rQ:0};
+              if(!pendingExtra[lid]) pendingExtra[lid]={rV:0,rQ:0,rT:0};
               pendingExtra[lid].rV+=liq;
               pendingExtra[lid].rQ+=itens;
+              pendingExtra[lid].rT+=tickets;
             }
             return;
           }
@@ -1380,21 +1414,18 @@ function readXLSX(file){
           /* busca vendedor pelo nome E pela loja desta linha */
           let seller=null;
           if(lojaObj){
-            /* primeiro tenta match exato por nome + loja */
             seller=S.sellers.find(s=>s.name.toLowerCase()===nome.toLowerCase()&&s.storeId===lojaObj.id);
           }
-          /* fallback: só pelo nome (vendedor pode estar cadastrado em loja diferente) */
           if(!seller) seller=S.sellers.find(s=>s.name.toLowerCase()===nome.toLowerCase());
 
           if(seller){
-            /* registra separado por loja: chave = sellerId + lojaId */
             const lojaId=lojaObj?lojaObj.id:seller.storeId;
             const chaveUnica=seller.id+'_'+lojaId;
             const ex=pending.find(p=>p._chave===chaveUnica);
-            if(ex){ex.rV+=liq;ex.rQ+=itens;}
+            if(ex){ex.rV+=liq;ex.rQ+=itens;ex.rT+=tickets;ex.rPA=pa;}
             else{
               const st=S.stores.find(x=>x.id===lojaId)||S.stores.find(x=>x.id===seller.storeId);
-              pending.push({_chave:chaveUnica,id:seller.id,name:seller.name,store:st?st.name:'',rV:liq,rQ:itens});
+              pending.push({_chave:chaveUnica,id:seller.id,name:seller.name,store:st?st.name:'',rV:liq,rQ:itens,rT:tickets,rPA:pa});
             }
           } else {
             const chave=lojaObj?`${nome} (${lojaObj.name})`:nome;
@@ -1452,17 +1483,19 @@ function confirmImport(){
   const key=S.month;
   if(!S.metas[key]) S.metas[key]={};
   pending.forEach(p=>{
-    if(!S.metas[key][p.id]) S.metas[key][p.id]={mV:0,mQ:0,rV:0,rQ:0};
+    if(!S.metas[key][p.id]) S.metas[key][p.id]={mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
     S.metas[key][p.id].rV=p.rV;
     S.metas[key][p.id].rQ=p.rQ;
+    if(p.rT!=null) S.metas[key][p.id].rT=p.rT;
+    if(p.rPA!=null) S.metas[key][p.id].rPA=p.rPA;
   });
-  /* salva extras de loja (Vendedor Loja / Venda Funcionário) */
   if(!S.extrasLoja) S.extrasLoja={};
   if(!S.extrasLoja[key]) S.extrasLoja[key]={};
   Object.entries(pendingExtra).forEach(([lojaId,val])=>{
-    if(!S.extrasLoja[key][lojaId]) S.extrasLoja[key][lojaId]={rV:0,rQ:0};
+    if(!S.extrasLoja[key][lojaId]) S.extrasLoja[key][lojaId]={rV:0,rQ:0,rT:0};
     S.extrasLoja[key][lojaId].rV=val.rV;
     S.extrasLoja[key][lojaId].rQ=val.rQ;
+    S.extrasLoja[key][lojaId].rT=val.rT||0;
   });
   S.lastImport = lastImportDate || new Date().toLocaleDateString('pt-BR');
   save(); closeM('importModal'); draw();
