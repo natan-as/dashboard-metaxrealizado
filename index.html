@@ -340,6 +340,19 @@ td{padding:13px 14px;vertical-align:middle}
   </div>
 </div>
 
+<!-- MONTH SELECTOR BAR -->
+<div id="monthBar" style="background:#fff;border-bottom:1px solid var(--border);padding:8px 28px;display:flex;align-items:center;gap:12px">
+  <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)">Mês de referência:</span>
+  <div class="mes-dropdown" id="monthDropdown">
+    <button class="mes-dropdown-btn" onclick="toggleMonthDropdown()" id="monthDropBtn">
+      <span id="monthDropLabel">Selecionar mês</span>
+      <span style="font-size:10px;margin-left:6px">▼</span>
+    </button>
+    <div class="mes-dropdown-list" id="monthDropList"></div>
+  </div>
+  <span id="lastUpdate" style="font-size:11px;color:var(--text2);margin-left:8px"></span>
+</div>
+
 <!-- MAIN -->
 <main>
   <div class="cards" id="cards"></div>
@@ -643,7 +656,53 @@ function init() {
     });
 }
 const save = () => localStorage.setItem('m360', JSON.stringify(S));
-const draw = () => { drawTabs(); drawDash(); };
+const draw = () => { drawTabs(); drawMonthTabs(); drawDash(); };
+
+function toggleMonthDropdown(){
+  const list=document.getElementById('monthDropList');
+  if(list) list.classList.toggle('open');
+}
+
+/* fecha ao clicar fora */
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#monthDropdown')){
+    const l=document.getElementById('monthDropList');
+    if(l) l.classList.remove('open');
+  }
+});
+
+function drawMonthTabs(){
+  const list=document.getElementById('monthDropList');
+  const label=document.getElementById('monthDropLabel');
+  if(!list||!label) return;
+
+  /* coleta todos os meses que têm dados de meta ou realizado */
+  const meses=new Set();
+  Object.keys(S.metas||{}).forEach(k=>{ if(/^\d{4}-\d{2}$/.test(k)) meses.add(k); });
+  meses.add(new Date().toISOString().slice(0,7));
+  if(S.month) meses.add(S.month);
+
+  const lista=[...meses].sort();
+
+  list.innerHTML='';
+  lista.forEach(m=>{
+    const ativo=m===S.month;
+    const item=document.createElement('div');
+    item.className='mes-dropdown-item'+(ativo?' checked':'');
+    item.innerHTML=`<span class="mes-check">${ativo?'✓':''}</span>${mLabel(m)}`;
+    item.onclick=(e)=>{
+      e.stopPropagation();
+      S.month=m;
+      save();
+      draw();
+      list.classList.remove('open');
+    };
+    list.appendChild(item);
+  });
+
+  /* atualiza label do botão */
+  label.textContent=S.month?mLabel(S.month):'Selecionar mês';
+}
 
 /* ============================================================
    EXPORTAR / IMPORTAR DADOS COMPLETOS
