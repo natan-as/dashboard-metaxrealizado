@@ -2565,81 +2565,81 @@ function renderLojasUsuario(selecionadas){
   if(!wrap||!list) return;
 
   if(grupo==='admin'){ wrap.style.display='none'; return; }
-
   wrap.style.display='block';
 
-  /* lojas disponíveis conforme perfil */
   let lojas=S.stores;
   if(grupo==='havaianas') lojas=S.stores.filter(s=>cmpIsHav(s.name));
   else if(grupo==='hering') lojas=S.stores.filter(s=>cmpIsHer(s.name));
-  /* custom = todas as lojas */
 
-  /* estado atual de seleção */
   let sel=new Set(
     selecionadas&&selecionadas[0]==='all' ? lojas.map(s=>s.id) : (selecionadas||[])
   );
 
-  function render(){
-    const todas=sel.size===lojas.length;
-    list.innerHTML='';
-
-    /* botão Todas */
-    const btnTodas=document.createElement('button');
-    btnTodas.type='button';
-    btnTodas.textContent='Todas';
-    btnTodas.style.cssText=`padding:5px 14px;border-radius:20px;border:2px solid ${todas?'var(--accent1)':'var(--border)'};background:${todas?'var(--accent1)':'transparent'};color:${todas?'#fff':'var(--text2)'};font-size:12px;font-weight:700;cursor:pointer;transition:all .2s`;
-    btnTodas.onclick=()=>{
-      if(todas) sel.clear();
-      else lojas.forEach(s=>sel.add(s.id));
-      render();
-    };
-    list.appendChild(btnTodas);
-
-    if(grupo==='custom'){
-      /* para personalizado: agrupa por franquia com separador/label */
-      const havLojas=lojas.filter(s=>cmpIsHav(s.name));
-      const herLojas=lojas.filter(s=>cmpIsHer(s.name));
-
-      const addGroup=(franquia, grupoLojas)=>{
-        if(!grupoLojas.length) return;
-        const sep=document.createElement('div');
-        sep.style.cssText='width:1px;height:26px;background:var(--border);margin:0 6px;align-self:center;flex-shrink:0';
-        list.appendChild(sep);
-        const lbl=document.createElement('span');
-        lbl.textContent=franquia;
-        lbl.style.cssText='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);align-self:center;flex-shrink:0';
-        list.appendChild(lbl);
-        grupoLojas.forEach(s=>addBtn(s));
-      };
-
-      addGroup('Havaianas', havLojas);
-      addGroup('Hering', herLojas);
-    } else {
-      /* havaianas ou hering: só um separador simples */
-      const sep=document.createElement('div');
-      sep.style.cssText='width:1px;height:26px;background:var(--border);margin:0 6px;align-self:center';
-      list.appendChild(sep);
-      lojas.forEach(s=>addBtn(s));
-    }
-
-    /* guarda estado */
-    list.dataset.sel=sel.size===lojas.length?'all':[...sel].join(',');
-  }
-
-  function addBtn(s){
+  function mkBtn(s, label){
     const ativo=sel.has(s.id);
     const btn=document.createElement('button');
     btn.type='button';
-    /* nome sem prefixo da franquia */
-    const nome=s.name.replace(/havaianas\s*/i,'').replace(/havainas\s*/i,'').replace(/hering\s*/i,'').trim();
-    btn.textContent=nome;
-    btn.style.cssText=`padding:5px 14px;border-radius:20px;border:2px solid ${ativo?'var(--accent1)':'var(--border)'};background:${ativo?'rgba(26,45,90,0.1)':'transparent'};color:${ativo?'var(--accent1)':'var(--text2)'};font-size:12px;font-weight:${ativo?'700':'500'};cursor:pointer;transition:all .2s`;
-    btn.onclick=()=>{
-      if(sel.has(s.id)) sel.delete(s.id);
-      else sel.add(s.id);
-      render();
-    };
-    list.appendChild(btn);
+    btn.textContent=label;
+    btn.style.cssText=`padding:5px 14px;border-radius:20px;border:2px solid ${ativo?'var(--accent1)':'var(--border)'};background:${ativo?'rgba(26,45,90,0.1)':'transparent'};color:${ativo?'var(--accent1)':'var(--text2)'};font-size:12px;font-weight:${ativo?'700':'500'};cursor:pointer;transition:all .2s;white-space:nowrap`;
+    btn.onclick=()=>{ if(sel.has(s.id)) sel.delete(s.id); else sel.add(s.id); render(); };
+    return btn;
+  }
+
+  function mkLabel(txt){
+    const s=document.createElement('span');
+    s.textContent=txt;
+    s.style.cssText='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);align-self:center;flex-shrink:0;margin-right:2px';
+    return s;
+  }
+
+  function render(){
+    const todas=sel.size===lojas.length;
+    list.innerHTML='';
+    list.style.cssText='display:flex;flex-direction:column;gap:10px';
+
+    /* Linha 1: Todas */
+    const linha1=document.createElement('div');
+    linha1.style.cssText='display:flex;align-items:center;gap:8px';
+    const btnTodas=document.createElement('button');
+    btnTodas.type='button';
+    btnTodas.textContent='Todas as lojas';
+    btnTodas.style.cssText=`padding:5px 16px;border-radius:20px;border:2px solid ${todas?'var(--accent1)':'var(--border)'};background:${todas?'var(--accent1)':'transparent'};color:${todas?'#fff':'var(--text2)'};font-size:12px;font-weight:700;cursor:pointer;transition:all .2s`;
+    btnTodas.onclick=()=>{ if(todas) sel.clear(); else lojas.forEach(s=>sel.add(s.id)); render(); };
+    linha1.appendChild(btnTodas);
+    list.appendChild(linha1);
+
+    if(grupo==='custom'){
+      const havLojas=lojas.filter(s=>cmpIsHav(s.name));
+      const herLojas=lojas.filter(s=>cmpIsHer(s.name));
+
+      /* Linha 2: Havaianas */
+      if(havLojas.length){
+        const linha2=document.createElement('div');
+        linha2.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-left:4px;border-left:3px solid var(--border)';
+        linha2.appendChild(mkLabel('Havaianas'));
+        havLojas.forEach(s=>linha2.appendChild(mkBtn(s, s.name.replace(/havaianas\s*/i,'').replace(/havainas\s*/i,'').trim())));
+        list.appendChild(linha2);
+      }
+
+      /* Linha 3: Hering */
+      if(herLojas.length){
+        const linha3=document.createElement('div');
+        linha3.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-left:4px;border-left:3px solid var(--border)';
+        linha3.appendChild(mkLabel('Hering'));
+        herLojas.forEach(s=>linha3.appendChild(mkBtn(s, s.name.replace(/hering\s*/i,'').trim())));
+        list.appendChild(linha3);
+      }
+    } else {
+      /* Havaianas ou Hering: linha única com label */
+      const linha2=document.createElement('div');
+      linha2.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-left:4px;border-left:3px solid var(--border)';
+      const franquia=grupo==='havaianas'?'Havaianas':'Hering';
+      linha2.appendChild(mkLabel(franquia));
+      lojas.forEach(s=>linha2.appendChild(mkBtn(s, s.name.replace(/havaianas\s*/i,'').replace(/havainas\s*/i,'').replace(/hering\s*/i,'').trim())));
+      list.appendChild(linha2);
+    }
+
+    list.dataset.sel=sel.size===lojas.length?'all':[...sel].join(',');
   }
 
   render();
