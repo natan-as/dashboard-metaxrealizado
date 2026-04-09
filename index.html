@@ -1150,8 +1150,6 @@ function drawTableLojas(list){
       <td><div class="sname">${l.name}</div></td>
       <td class="vcel">${brl(l.mV)}</td>
       <td class="vcel" style="color:var(--blue)">${brl(l.rV)}</td>
-      <td class="vcel">${tm}</td>
-      <td class="vcel">${pa}</td>
       <td class="pcel">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <span class="pct" style="color:${col}">${pctV.toFixed(1)}%</span>${chip}
@@ -1163,7 +1161,7 @@ function drawTableLojas(list){
 
   document.getElementById('rbadge').textContent=lojasArr.length+' loja'+(lojasArr.length!==1?'s':'');
   document.getElementById('tbl').innerHTML=`<table>
-    <thead><tr><th>#</th><th>Loja</th><th>Meta</th><th>Realizado</th><th>T.M.</th><th>P.A.</th><th>Progresso</th></tr></thead>
+    <thead><tr><th>#</th><th>Loja</th><th>Meta</th><th>Realizado</th><th>Progresso</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
 }
 function drawTable(list) {
