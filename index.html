@@ -1111,13 +1111,17 @@ function drawTableLojas(list){
   });
 
   /* soma TODOS os vendedores ativos das lojas do mapa */
-  S.sellers.filter(s=>s.ativo!==false&&lojaMap[s.storeId]).forEach(s=>{
+  S.sellers.filter(s=>s.ativo!==false).forEach(s=>{
     const m=(S.metas[key]||{})[s.id]||{};
-    lojaMap[s.storeId].mV+=(m.mV||0);
-    lojaMap[s.storeId].mQ+=(m.mQ||0);
-    lojaMap[s.storeId].rV+=(m.rV||0);
-    lojaMap[s.storeId].rQ+=(m.rQ||0);
-    lojaMap[s.storeId].rT+=(m.rT||0);
+    /* usa lojaId real salvo na importação, ou o storeId cadastrado */
+    const lojaReal=m.lojaId||s.storeId;
+    if(lojaMap[lojaReal]){
+      lojaMap[lojaReal].mV+=(m.mV||0);
+      lojaMap[lojaReal].mQ+=(m.mQ||0);
+      lojaMap[lojaReal].rV+=(m.rV||0);
+      lojaMap[lojaReal].rQ+=(m.rQ||0);
+      lojaMap[lojaReal].rT+=(m.rT||0);
+    }
   });
 
   /* inclui extras de loja */
@@ -1724,12 +1728,18 @@ function quickAddVend(uid, nome){
 function confirmImport(){
   const key=S.month;
   if(!S.metas[key]) S.metas[key]={};
+
   pending.forEach(p=>{
+    /* p._chave = "sellerId_lojaId" quando vendeu em loja diferente da cadastrada */
+    const lojaId=p._chave?p._chave.split('_').slice(1).join('_'):null;
+
     if(!S.metas[key][p.id]) S.metas[key][p.id]={mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
     S.metas[key][p.id].rV=p.rV;
     S.metas[key][p.id].rQ=p.rQ;
     if(p.rT!=null) S.metas[key][p.id].rT=p.rT;
     if(p.rPA!=null) S.metas[key][p.id].rPA=p.rPA;
+    /* guarda lojaId real para uso no ranking de lojas */
+    S.metas[key][p.id].lojaId=lojaId||p.storeId||S.sellers.find(s=>s.id===p.id)?.storeId||null;
   });
   if(!S.extrasLoja) S.extrasLoja={};
   if(!S.extrasLoja[key]) S.extrasLoja[key]={};
