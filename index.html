@@ -277,8 +277,9 @@ td{padding:13px 14px;vertical-align:middle}
       <label class="login-lbl">Senha</label>
       <div style="position:relative">
         <input class="login-inp" id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:42px">
-        <button type="button" onclick="toggleSenhaVisivel()" id="btnVerSenha" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);font-size:16px;padding:4px;line-height:1" title="Mostrar/ocultar senha">
-          👁
+        <button type="button" onclick="toggleSenhaVisivel()" id="btnVerSenha" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);padding:4px;line-height:1;display:flex;align-items:center" title="Mostrar senha">
+          <svg id="iconOlho" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg id="iconOlhoRisco" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
         </button>
       </div>
     </div>
@@ -383,12 +384,18 @@ td{padding:13px 14px;vertical-align:middle}
   </div>
 
   <div class="rank-head">
-    <span class="rank-title">Ranking de Vendedores</span>
+    <span class="rank-title" id="rankTitle">Ranking de Vendedores</span>
     <span class="badge" id="rbadge">0 vendedores</span>
     <span class="mbadge" id="mmonth"></span>
-    <div class="toggle" style="margin-left:auto">
-      <button class="tgl-btn on" id="tBtnV" onclick="setTableM('v')">Por Valor R$</button>
-      <button class="tgl-btn"    id="tBtnQ" onclick="setTableM('q')">Por Quantidade</button>
+    <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
+      <div class="toggle">
+        <button class="tgl-btn on" id="rBtnVend" onclick="setRankMode('vend')">Por Vendedor</button>
+        <button class="tgl-btn"    id="rBtnLoja" onclick="setRankMode('loja')">Por Loja</button>
+      </div>
+      <div class="toggle" id="toggleValorQtd">
+        <button class="tgl-btn on" id="tBtnV" onclick="setTableM('v')">Por Valor R$</button>
+        <button class="tgl-btn"    id="tBtnQ" onclick="setTableM('q')">Por Quantidade</button>
+      </div>
     </div>
   </div>
   <div class="tbl-wrap" id="tbl"></div>
@@ -698,9 +705,14 @@ function init() {
     .then(r => { if (!r.ok) throw new Error('não encontrado'); return r.json(); })
     .then(dados => {
       if (dados.stores && dados.sellers && dados.metas) {
-        const { cmpData: cd, cmpFiles: cf, ...metaDados } = dados;
+        const { cmpData: cd, cmpFiles: cf, usuarios: usr, ...metaDados } = dados;
         S = metaDados;
         if (cd) { cmpData = cd; cmpFiles = cf || {1:[],2:[]}; }
+        /* carrega usuários do JSON — tem prioridade sobre localStorage */
+        if (usr && usr.length) {
+          saveUsers(usr);
+          USERS = usr;
+        }
         localStorage.setItem('m360', JSON.stringify(S));
         cmpSave();
       }
@@ -709,6 +721,7 @@ function init() {
       const raw = localStorage.getItem('m360');
       if (raw) try { S = JSON.parse(raw); } catch(e){}
       cmpLoad();
+      USERS = loadUsers();
     })
     .finally(() => {
       if (!S.month) S.month = new Date().toISOString().slice(0,7);
@@ -773,8 +786,9 @@ function drawMonthTabs(){
    EXPORTAR / IMPORTAR DADOS COMPLETOS
 ============================================================ */
 function exportarDados() {
-  /* exporta Meta X Realizado + Comparativo em um único JSON */
-  const dados = JSON.stringify({ ...S, cmpData, cmpFiles }, null, 2);
+  /* exporta Meta X Realizado + Comparativo + Usuários em um único JSON */
+  const usuarios = loadUsers();
+  const dados = JSON.stringify({ ...S, cmpData, cmpFiles, usuarios }, null, 2);
   const blob = new Blob([dados], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -978,7 +992,8 @@ function drawDash() {
     return;
   }
   drawChart(list);
-  drawTable(list);
+  if(rankMode==='loja') drawTableLojas(list);
+  else drawTable(list);
 }
 
 /* ============================================================
@@ -1024,11 +1039,88 @@ function drawChart(list) {
 /* ============================================================
    TABLE
 ============================================================ */
+let rankMode = 'vend'; /* 'vend' ou 'loja' */
+
+function setRankMode(m){
+  rankMode=m;
+  document.getElementById('rBtnVend').classList.toggle('on', m==='vend');
+  document.getElementById('rBtnLoja').classList.toggle('on', m==='loja');
+  document.getElementById('rankTitle').textContent = m==='loja' ? 'Ranking de Lojas' : 'Ranking de Vendedores';
+  document.getElementById('toggleValorQtd').style.display = m==='loja' ? 'none' : '';
+  draw();
+}
+
 function setTableM(m) {
   tM=m;
   document.getElementById('tBtnV').classList.toggle('on',m==='v');
   document.getElementById('tBtnQ').classList.toggle('on',m==='q');
   draw();
+}
+
+function drawTableLojas(list){
+  /* agrupa vendedores por loja e soma rV, rQ, mV, mQ, rT */
+  const key=S.month;
+  const lojaMap={};
+  storesFiltradas().forEach(s=>{
+    lojaMap[s.id]={id:s.id,name:s.name,mV:0,mQ:0,rV:0,rQ:0,rT:0};
+  });
+
+  /* soma vendedores na loja */
+  list.forEach(v=>{
+    if(lojaMap[v.storeId]){
+      lojaMap[v.storeId].mV+=v.mV||0;
+      lojaMap[v.storeId].mQ+=v.mQ||0;
+      lojaMap[v.storeId].rV+=v.rV||0;
+      lojaMap[v.storeId].rQ+=v.rQ||0;
+      lojaMap[v.storeId].rT+=v.rT||0;
+    }
+  });
+
+  /* inclui extras de loja */
+  const extras=S.extrasLoja&&S.extrasLoja[key]?S.extrasLoja[key]:{};
+  Object.entries(extras).forEach(([lojaId,ex])=>{
+    if(lojaMap[lojaId]){
+      lojaMap[lojaId].rV+=ex.rV||0;
+      lojaMap[lojaId].rQ+=ex.rQ||0;
+      lojaMap[lojaId].rT+=ex.rT||0;
+    }
+  });
+
+  let lojas=Object.values(lojaMap).filter(l=>l.rV>0||l.mV>0);
+  lojas.sort((a,b)=>b.rV-a.rV);
+
+  const rows=lojas.map((l,i)=>{
+    const pctV=l.mV>0?(l.rV/l.mV)*100:0;
+    const cap=Math.min(pctV,100);
+    const col=pctV>=100?'var(--green)':pctV>=75?'var(--blue)':pctV>=50?'var(--warn)':'var(--red)';
+    const rc=i===0?'r1':i===1?'r2':i===2?'r3':'ro';
+    const ri=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    const chip=pctV>=100?'<span class="chip cg">✓ Meta batida</span>'
+              :pctV>=75 ?'<span class="chip cb">🔥 Quase lá</span>'
+              :pctV>=50 ?'<span class="chip cw">⚡ Em andamento</span>'
+              :'<span class="chip cr">⚠ Atenção</span>';
+    const tm=l.rT>0?brl(l.rV/l.rT):'—';
+    const pa=l.rT>0?(l.rQ/l.rT).toFixed(2):'—';
+    return `<tr>
+      <td><span class="rnum ${rc}">${ri}</span></td>
+      <td><div class="sname">${l.name}</div></td>
+      <td class="vcel">${brl(l.mV)}</td>
+      <td class="vcel" style="color:var(--blue)">${brl(l.rV)}</td>
+      <td class="vcel">${tm}</td>
+      <td class="vcel">${pa}</td>
+      <td class="pcel">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span class="pct" style="color:${col}">${pctV.toFixed(1)}%</span>${chip}
+        </div>
+        <div class="pbar-bg"><div class="pbar" style="width:${cap}%;background:${col}"></div></div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('rbadge').textContent=lojas.length+' loja'+(lojas.length!==1?'s':'');
+  document.getElementById('tbl').innerHTML=`<table>
+    <thead><tr><th>#</th><th>Loja</th><th>Meta</th><th>Realizado</th><th>T.M.</th><th>P.A.</th><th>Progresso</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
 }
 function drawTable(list) {
   const rows=list.map((v,i)=>{
@@ -1646,13 +1738,17 @@ let currentUser = null;
 function toggleSenhaVisivel(){
   const inp=document.getElementById('loginPass');
   const btn=document.getElementById('btnVerSenha');
+  const olho=document.getElementById('iconOlho');
+  const risco=document.getElementById('iconOlhoRisco');
   if(inp.type==='password'){
     inp.type='text';
-    btn.textContent='🙈';
+    olho.style.display='none';
+    risco.style.display='';
     btn.title='Ocultar senha';
   } else {
     inp.type='password';
-    btn.textContent='👁';
+    olho.style.display='';
+    risco.style.display='none';
     btn.title='Mostrar senha';
   }
 }
