@@ -325,6 +325,9 @@ td{padding:13px 14px;vertical-align:middle}
     <div class="nav-item active" id="navMeta" onclick="navegarPara('meta')"><span class="icon">🎯</span> Meta X Realizado</div>
     <div class="nav-item" id="navComp" onclick="navegarPara('comp')"><span class="icon">📊</span> Comparativo de Lojas</div>
     <hr class="sidebar-divider">
+    <div class="sidebar-section" id="sidebarAdminSection" style="display:none">Admin</div>
+    <div class="nav-item" id="navUsers" onclick="navegarPara('users')" style="display:none"><span class="icon">👥</span> Usuários</div>
+    <hr class="sidebar-divider">
     <div class="sidebar-section">Conta</div>
     <div class="nav-item" onclick="doLogout()"><span class="icon">🚪</span> Sair</div>
   </nav>
@@ -459,6 +462,18 @@ td{padding:13px 14px;vertical-align:middle}
 
   </div>
 </div><!-- /page-comp -->
+
+<!-- PAGE USUÁRIOS -->
+<div id="page-users" style="display:none;flex-direction:column;flex:1;overflow-y:auto;padding:28px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div>
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--accent1)">👥 Gerenciamento de Usuários</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">Gerencie quem pode acessar o dashboard e quais lojas cada um visualiza</div>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModalUsuario()">+ Novo Usuário</button>
+  </div>
+  <div id="usersTable"></div>
+</div>
 </div><!-- /app-main -->
 </div><!-- /app-layout -->
 
@@ -608,6 +623,51 @@ td{padding:13px 14px;vertical-align:middle}
     <div class="mfoot">
       <button class="btn btn-ghost" onclick="closeM('cmpImportModal')">Cancelar</button>
       <button class="btn btn-primary" id="cmpBtnConfirm" onclick="cmpConfirmImport()" style="display:none">✓ Confirmar Importação</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL USUÁRIO ===== -->
+<div class="overlay" id="userModal">
+  <div class="modal">
+    <div class="mhd">
+      <span class="mtitle" id="userModalTitle">👥 Novo Usuário</span>
+      <button class="mclose" onclick="closeM('userModal')">✕</button>
+    </div>
+    <div class="mbody">
+      <input type="hidden" id="editUserId">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div class="fg">
+          <label class="flbl">Login (usuário)</label>
+          <input class="finp" id="uLogin" placeholder="ex: maria.silva" autocomplete="off">
+        </div>
+        <div class="fg">
+          <label class="flbl">Senha</label>
+          <input class="finp" type="password" id="uPass" placeholder="Mínimo 4 caracteres" autocomplete="new-password">
+        </div>
+        <div class="fg">
+          <label class="flbl">Nome de exibição</label>
+          <input class="finp" id="uNome" placeholder="ex: Maria Silva">
+        </div>
+        <div class="fg">
+          <label class="flbl">Perfil de acesso</label>
+          <select class="fsel" id="uGrupo" onchange="renderLojasUsuario()">
+            <option value="admin">👑 Admin (acesso total)</option>
+            <option value="havaianas">🩴 Havaianas</option>
+            <option value="hering">👕 Hering</option>
+            <option value="cd">📋 CD</option>
+            <option value="custom">🔧 Personalizado</option>
+          </select>
+        </div>
+      </div>
+      <div id="lojasUsuarioWrap" style="display:none">
+        <label class="flbl" style="margin-bottom:8px;display:block">Lojas que este usuário pode visualizar</label>
+        <div id="lojasUsuarioList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeM('userModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarUsuario()">💾 Salvar</button>
     </div>
   </div>
 </div>
@@ -1554,16 +1614,32 @@ function atualizarDataHeader(){
 /* ============================================================
    LOGIN / LOGOUT
 ============================================================ */
-const USERS = [
-  { user: 'admin',     pass: 'admin123',     grupo: 'admin'     },
-  { user: 'havaianas', pass: 'hav2024',      grupo: 'havaianas' },
-  { user: 'hering',    pass: 'her2024',      grupo: 'hering'    },
-  { user: 'cd',        pass: 'cd2024',       grupo: 'cd'        },
+/* ============================================================
+   USUÁRIOS — gerenciados no localStorage 'm360users'
+   Cada usuário: { id, user, pass, nome, grupo, lojas }
+   lojas: ['all'] = todas, ou array de store IDs
+============================================================ */
+const USERS_DEFAULT = [
+  { id:'u_admin',     user:'admin',     pass:'admin123', nome:'Admin',     grupo:'admin',     lojas:['all'] },
+  { id:'u_havaianas', user:'havaianas', pass:'hav2024',  nome:'Havaianas', grupo:'havaianas', lojas:['all'] },
+  { id:'u_hering',    user:'hering',    pass:'her2024',  nome:'Hering',    grupo:'hering',    lojas:['all'] },
+  { id:'u_cd',        user:'cd',        pass:'cd2024',   nome:'CD',        grupo:'cd',        lojas:['all'] },
 ];
+
+function loadUsers(){
+  try{
+    const raw=localStorage.getItem('m360users');
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return JSON.parse(JSON.stringify(USERS_DEFAULT));
+}
+function saveUsers(users){ localStorage.setItem('m360users',JSON.stringify(users)); }
+let USERS=loadUsers();
 
 let currentUser = null;
 
 function doLogin() {
+  USERS = loadUsers();
   const u = document.getElementById('loginUser').value.trim().toLowerCase();
   const p = document.getElementById('loginPass').value;
   const found = USERS.find(x => x.user === u && x.pass === p);
@@ -1591,19 +1667,21 @@ function mostrarApp() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appContent').style.display = 'block';
   document.getElementById('userLabel').textContent =
+    currentUser.nome || (
     currentUser.grupo === 'admin'     ? '👑 Admin' :
     currentUser.grupo === 'havaianas' ? '🩴 Havaianas' :
-    currentUser.grupo === 'hering'    ? '👕 Hering' : '📋 CD';
+    currentUser.grupo === 'hering'    ? '👕 Hering' : '📋 CD');
 
   const isAdmin = currentUser.grupo === 'admin';
-  /* Meta buttons - visíveis só para admin na página meta */
   document.getElementById('btnAdmin').style.display     = isAdmin ? '' : 'none';
   document.getElementById('btnExport').style.display    = isAdmin ? '' : 'none';
   document.getElementById('btnImportRel').style.display = isAdmin ? '' : 'none';
-  /* Comparativo buttons - sempre ocultos ao entrar (página meta é a inicial) */
   document.getElementById('btnImportP1').style.display   = 'none';
   document.getElementById('btnImportP2').style.display   = 'none';
   document.getElementById('btnExportComp').style.display = 'none';
+  /* sidebar admin */
+  document.getElementById('sidebarAdminSection').style.display = isAdmin ? '' : 'none';
+  document.getElementById('navUsers').style.display = isAdmin ? '' : 'none';
 
   if (currentUser.grupo === 'havaianas') S.store = 'all-havaianas';
   else if (currentUser.grupo === 'hering') S.store = 'all-hering';
@@ -1613,11 +1691,17 @@ function mostrarApp() {
   draw();
 }
 
-/* filtra lojas conforme grupo logado */
+/* filtra lojas conforme grupo e lojas permitidas do usuário logado */
 function storesFiltradas() {
   if (!currentUser) return [];
-  if (currentUser.grupo === 'admin' || currentUser.grupo === 'cd') return S.stores;
-  return S.stores.filter(s => s.name.toLowerCase().includes(currentUser.grupo));
+  let lojas = S.stores;
+  /* filtra por grupo primeiro */
+  if (currentUser.grupo === 'havaianas') lojas = lojas.filter(s=>s.name.toLowerCase().includes('havaianas'));
+  else if (currentUser.grupo === 'hering') lojas = lojas.filter(s=>s.name.toLowerCase().includes('hering'));
+  /* filtra pelas lojas permitidas do usuário (se não for 'all') */
+  const permitidas = currentUser.lojas||['all'];
+  if (permitidas[0] !== 'all') lojas = lojas.filter(s=>permitidas.includes(s.id));
+  return lojas;
 }
 
 
@@ -1638,21 +1722,32 @@ function closeSidebar(){
 
 function navegarPara(pagina){
   closeSidebar();
-  const isMeta = pagina === 'meta';
-  document.getElementById('page-meta').style.display = isMeta ? 'flex' : 'none';
-  document.getElementById('page-comp').style.display = isMeta ? 'none' : 'flex';
+  const isMeta  = pagina==='meta';
+  const isComp  = pagina==='comp';
+  const isUsers = pagina==='users';
+
+  document.getElementById('page-meta').style.display  = isMeta  ? 'flex' : 'none';
+  document.getElementById('page-comp').style.display  = isComp  ? 'flex' : 'none';
+  document.getElementById('page-users').style.display = isUsers ? 'flex' : 'none';
+
   document.getElementById('navMeta').classList.toggle('active', isMeta);
-  document.getElementById('navComp').classList.toggle('active', !isMeta);
-  document.getElementById('pageTitle').textContent = isMeta ? '' : '📊 Comparativo de Lojas';  const isAdmin = currentUser && currentUser.grupo === 'admin';
-  /* Meta X Realizado buttons */
+  document.getElementById('navComp').classList.toggle('active', isComp);
+  document.getElementById('navUsers').classList.toggle('active', isUsers);
+
+  document.getElementById('pageTitle').textContent =
+    isComp  ? '📊 Comparativo de Lojas' :
+    isUsers ? '👥 Usuários' : '';
+
+  const isAdmin = currentUser && currentUser.grupo === 'admin';
   document.getElementById('btnAdmin').style.display    = isAdmin && isMeta ? '' : 'none';
   document.getElementById('btnExport').style.display   = isAdmin && isMeta ? '' : 'none';
   document.getElementById('btnImportRel').style.display= isAdmin && isMeta ? '' : 'none';
-  /* Comparativo buttons */
-  document.getElementById('btnImportP1').style.display  = isAdmin && !isMeta ? '' : 'none';
-  document.getElementById('btnImportP2').style.display  = isAdmin && !isMeta ? '' : 'none';
-  document.getElementById('btnExportComp').style.display= isAdmin && !isMeta ? '' : 'none';
-  if(!isMeta) cmpDrawTabs();
+  document.getElementById('btnImportP1').style.display  = isAdmin && isComp ? '' : 'none';
+  document.getElementById('btnImportP2').style.display  = isAdmin && isComp ? '' : 'none';
+  document.getElementById('btnExportComp').style.display= isAdmin && isComp ? '' : 'none';
+
+  if(isComp)  cmpDrawTabs();
+  if(isUsers) renderUsersTable();
 }
 
 /* ============================================================
@@ -2396,6 +2491,182 @@ function cmpDrawCards(){
     <div class="sum-card"><div class="sum-label">Total ${ano1}</div><div class="sum-val">${brl(tot1)}</div><div class="sum-sub">${mesTxt1}</div></div>
     <div class="sum-card red"><div class="sum-label">Total ${ano2}</div><div class="sum-val" style="color:var(--accent2)">${brl(tot2)}</div><div class="sum-sub">${mesTxt2}</div></div>
     <div class="sum-card"><div class="sum-label">Variação</div><div class="sum-val" style="color:${diff>=0?'#16a34a':'var(--accent2)'}">${brl(Math.abs(diff))}</div><div class="sum-diff ${diffClass}">${diffIcon} ${Math.abs(pct).toFixed(1)}% em relação a ${ano1}</div></div>`;
+}
+
+/* ============================================================
+   GERENCIAMENTO DE USUÁRIOS
+============================================================ */
+function renderUsersTable(){
+  const users=loadUsers();
+  const el=document.getElementById('usersTable');
+  if(!el) return;
+  el.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:var(--surface2)">
+      <th style="padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)">Login</th>
+      <th style="padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)">Nome</th>
+      <th style="padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)">Perfil</th>
+      <th style="padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)">Lojas</th>
+      <th style="padding:10px 14px;text-align:center;border-bottom:1px solid var(--border)">Ações</th>
+    </tr></thead><tbody>
+    ${users.map(u=>{
+      const lojasLabel=u.lojas&&u.lojas[0]==='all'?'Todas':(u.lojas||[]).map(id=>S.stores.find(s=>s.id===id)?.name||id).join(', ')||'—';
+      const grupoLabel=u.grupo==='admin'?'👑 Admin':u.grupo==='havaianas'?'🩴 Havaianas':u.grupo==='hering'?'👕 Hering':u.grupo==='cd'?'📋 CD':'🔧 Custom';
+      const isAdmin=u.id==='u_admin';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:10px 14px;font-weight:600">${u.user}</td>
+        <td style="padding:10px 14px">${u.nome||'—'}</td>
+        <td style="padding:10px 14px">${grupoLabel}</td>
+        <td style="padding:10px 14px;color:var(--text2);font-size:12px;max-width:280px">${lojasLabel}</td>
+        <td style="padding:10px 14px;text-align:center;display:flex;gap:6px;justify-content:center">
+          <button class="btn btn-ghost btn-sm" onclick="editarUsuario('${u.id}')">✏️ Editar</button>
+          ${!isAdmin?`<button class="btn btn-ghost btn-sm" onclick="excluirUsuario('${u.id}')" style="color:var(--accent2)">✕ Excluir</button>`:''}
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+}
+
+function abrirModalUsuario(id){
+  document.getElementById('userModalTitle').textContent = id ? '✏️ Editar Usuário' : '👥 Novo Usuário';
+  document.getElementById('editUserId').value = id||'';
+  if(id){
+    const u=loadUsers().find(x=>x.id===id);
+    if(!u) return;
+    document.getElementById('uLogin').value  = u.user;
+    document.getElementById('uPass').value   = '';
+    document.getElementById('uNome').value   = u.nome||'';
+    document.getElementById('uGrupo').value  = u.grupo==='havaianas'||u.grupo==='hering'||u.grupo==='cd'||u.grupo==='admin'?u.grupo:'custom';
+    renderLojasUsuario(u.lojas);
+  } else {
+    document.getElementById('uLogin').value = '';
+    document.getElementById('uPass').value  = '';
+    document.getElementById('uNome').value  = '';
+    document.getElementById('uGrupo').value = 'havaianas';
+    renderLojasUsuario(['all']);
+  }
+  document.getElementById('userModal').classList.add('open');
+}
+
+function editarUsuario(id){ abrirModalUsuario(id); }
+
+function excluirUsuario(id){
+  if(!confirm('Excluir este usuário?')) return;
+  const users=loadUsers().filter(u=>u.id!==id);
+  saveUsers(users);
+  USERS=users;
+  renderUsersTable();
+  toast('Usuário excluído.');
+}
+
+function renderLojasUsuario(selecionadas){
+  const grupo=document.getElementById('uGrupo').value;
+  const wrap=document.getElementById('lojasUsuarioWrap');
+  const list=document.getElementById('lojasUsuarioList');
+  if(!wrap||!list) return;
+
+  if(grupo==='admin'){ wrap.style.display='none'; return; }
+
+  wrap.style.display='block';
+
+  /* lojas disponíveis conforme perfil */
+  let lojas=S.stores;
+  if(grupo==='havaianas') lojas=S.stores.filter(s=>cmpIsHav(s.name));
+  else if(grupo==='hering') lojas=S.stores.filter(s=>cmpIsHer(s.name));
+
+  /* estado atual de seleção */
+  let sel=new Set(selecionadas&&selecionadas[0]==='all'?lojas.map(s=>s.id):(selecionadas||[]));
+
+  function render(){
+    const todas=sel.size===lojas.length;
+    list.innerHTML='';
+
+    /* botão Todas */
+    const btnTodas=document.createElement('button');
+    btnTodas.type='button';
+    btnTodas.textContent='✓ Todas';
+    btnTodas.style.cssText=`padding:6px 14px;border-radius:20px;border:2px solid ${todas?'var(--accent1)':'var(--border)'};background:${todas?'var(--accent1)':'transparent'};color:${todas?'#fff':'var(--text2)'};font-size:12px;font-weight:700;cursor:pointer;transition:all .2s`;
+    btnTodas.onclick=()=>{
+      if(todas) sel.clear();
+      else lojas.forEach(s=>sel.add(s.id));
+      render();
+    };
+    list.appendChild(btnTodas);
+
+    /* separador */
+    const sep=document.createElement('div');
+    sep.style.cssText='width:1px;height:28px;background:var(--border);margin:0 4px;align-self:center';
+    list.appendChild(sep);
+
+    /* botão por loja */
+    lojas.forEach(s=>{
+      const ativo=sel.has(s.id);
+      const btn=document.createElement('button');
+      btn.type='button';
+      /* nome curto: remove prefixo da franquia */
+      const nome=s.name.replace(/havaianas\s*/i,'').replace(/havainas\s*/i,'').replace(/hering\s*/i,'').trim();
+      btn.textContent=nome;
+      btn.style.cssText=`padding:6px 14px;border-radius:20px;border:2px solid ${ativo?'var(--accent1)':'var(--border)'};background:${ativo?'rgba(26,45,90,0.1)':'transparent'};color:${ativo?'var(--accent1)':'var(--text2)'};font-size:12px;font-weight:${ativo?'700':'500'};cursor:pointer;transition:all .2s`;
+      btn.onclick=()=>{
+        if(sel.has(s.id)) sel.delete(s.id);
+        else sel.add(s.id);
+        render();
+      };
+      list.appendChild(btn);
+    });
+
+    /* guarda estado no hidden input para salvarUsuario() ler */
+    document.getElementById('lojasUsuarioList').dataset.sel=
+      sel.size===lojas.length?'all':[...sel].join(',');
+  }
+
+  render();
+}
+
+function toggleLojaAll(){}
+function atualizarLojaAll(){}
+
+function salvarUsuario(){
+  const id=document.getElementById('editUserId').value;
+  const user=document.getElementById('uLogin').value.trim().toLowerCase();
+  const pass=document.getElementById('uPass').value;
+  const nome=document.getElementById('uNome').value.trim();
+  const grupo=document.getElementById('uGrupo').value;
+
+  if(!user) return toast('Digite o login','err');
+  if(!nome) return toast('Digite o nome','err');
+
+  let users=loadUsers();
+
+  /* valida login único */
+  const duplicado=users.find(u=>u.user===user&&u.id!==id);
+  if(duplicado) return toast('Este login já existe','err');
+
+  /* coleta lojas selecionadas */
+  let lojas=['all'];
+  const listEl=document.getElementById('lojasUsuarioList');
+  if(listEl&&listEl.dataset.sel&&grupo!=='admin'){
+    const raw=listEl.dataset.sel;
+    lojas=raw==='all'?['all']:raw.split(',').filter(Boolean);
+    if(!lojas.length) lojas=['all'];
+  }
+
+  if(id){
+    const u=users.find(x=>x.id===id);
+    if(!u) return;
+    u.user=user; u.nome=nome; u.grupo=grupo; u.lojas=lojas;
+    if(pass) u.pass=pass;
+    /* atualiza sessão se for o próprio usuário */
+    if(currentUser&&currentUser.id===id){ currentUser={...u}; sessionStorage.setItem('m360user',JSON.stringify(currentUser)); }
+  } else {
+    if(!pass) return toast('Digite a senha','err');
+    users.push({id:'u_'+Date.now(),user,pass,nome,grupo,lojas});
+  }
+
+  saveUsers(users);
+  USERS=users;
+  closeM('userModal');
+  renderUsersTable();
+  toast('✅ Usuário salvo!');
 }
 
 init();
