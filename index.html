@@ -1135,7 +1135,11 @@ function drawTableLojas(list){
   });
 
   let lojasArr=Object.values(lojaMap).filter(l=>l.rV>0||l.mV>0);
-  lojasArr.sort((a,b)=>b.rV-a.rV);
+  lojasArr.sort((a,b)=>{
+    const pctA=a.mV>0?(a.rV/a.mV)*100:0;
+    const pctB=b.mV>0?(b.rV/b.mV)*100:0;
+    return pctB-pctA;
+  });
 
   const rows=lojasArr.map((l,i)=>{
     const pctV=l.mV>0?(l.rV/l.mV)*100:0;
