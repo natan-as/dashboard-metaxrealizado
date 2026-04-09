@@ -326,7 +326,7 @@ td{padding:13px 14px;vertical-align:middle}
     <div class="nav-item" id="navComp" onclick="navegarPara('comp')"><span class="icon">📊</span> Comparativo de Lojas</div>
     <hr class="sidebar-divider">
     <div class="sidebar-section" id="sidebarAdminSection" style="display:none">Admin</div>
-    <div class="nav-item" id="navUsers" onclick="navegarPara('users')" style="display:none"><span class="icon">👥</span> Usuários</div>
+    <div class="nav-item" id="navUsers" onclick="navegarPara('users')" style="display:none"><span class="icon">👤</span> Usuários</div>
     <hr class="sidebar-divider">
     <div class="sidebar-section">Conta</div>
     <div class="nav-item" onclick="doLogout()"><span class="icon">🚪</span> Sair</div>
@@ -467,7 +467,7 @@ td{padding:13px 14px;vertical-align:middle}
 <div id="page-users" style="display:none;flex-direction:column;flex:1;overflow-y:auto;padding:28px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
     <div>
-      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--accent1)">👥 Gerenciamento de Usuários</div>
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--accent1)">Gerenciamento de Usuários</div>
       <div style="font-size:13px;color:var(--text2);margin-top:4px">Gerencie quem pode acessar o dashboard e quais lojas cada um visualiza</div>
     </div>
     <button class="btn btn-primary" onclick="abrirModalUsuario()">+ Novo Usuário</button>
@@ -652,17 +652,17 @@ td{padding:13px 14px;vertical-align:middle}
         <div class="fg">
           <label class="flbl">Perfil de acesso</label>
           <select class="fsel" id="uGrupo" onchange="renderLojasUsuario()">
-            <option value="admin">👑 Admin (acesso total)</option>
-            <option value="havaianas">🩴 Havaianas</option>
-            <option value="hering">👕 Hering</option>
-            <option value="cd">📋 CD</option>
-            <option value="custom">🔧 Personalizado</option>
+            <option value="admin">Admin (acesso total)</option>
+            <option value="havaianas">Havaianas</option>
+            <option value="hering">Hering</option>
+            <option value="cd">CD</option>
+            <option value="custom">Personalizado</option>
           </select>
         </div>
       </div>
       <div id="lojasUsuarioWrap" style="display:none">
         <label class="flbl" style="margin-bottom:8px;display:block">Lojas que este usuário pode visualizar</label>
-        <div id="lojasUsuarioList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        <div id="lojasUsuarioList" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"></div>
       </div>
     </div>
     <div class="mfoot">
@@ -1736,7 +1736,7 @@ function navegarPara(pagina){
 
   document.getElementById('pageTitle').textContent =
     isComp  ? '📊 Comparativo de Lojas' :
-    isUsers ? '👥 Usuários' : '';
+    isUsers ? 'Usuários' : '';
 
   const isAdmin = currentUser && currentUser.grupo === 'admin';
   document.getElementById('btnAdmin').style.display    = isAdmin && isMeta ? '' : 'none';
@@ -2510,7 +2510,7 @@ function renderUsersTable(){
     </tr></thead><tbody>
     ${users.map(u=>{
       const lojasLabel=u.lojas&&u.lojas[0]==='all'?'Todas':(u.lojas||[]).map(id=>S.stores.find(s=>s.id===id)?.name||id).join(', ')||'—';
-      const grupoLabel=u.grupo==='admin'?'👑 Admin':u.grupo==='havaianas'?'🩴 Havaianas':u.grupo==='hering'?'👕 Hering':u.grupo==='cd'?'📋 CD':'🔧 Custom';
+      const grupoLabel=u.grupo==='admin'?'Admin':u.grupo==='havaianas'?'Havaianas':u.grupo==='hering'?'Hering':u.grupo==='cd'?'CD':'Personalizado';
       const isAdmin=u.id==='u_admin';
       return `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:10px 14px;font-weight:600">${u.user}</td>
@@ -2572,9 +2572,12 @@ function renderLojasUsuario(selecionadas){
   let lojas=S.stores;
   if(grupo==='havaianas') lojas=S.stores.filter(s=>cmpIsHav(s.name));
   else if(grupo==='hering') lojas=S.stores.filter(s=>cmpIsHer(s.name));
+  /* custom = todas as lojas */
 
   /* estado atual de seleção */
-  let sel=new Set(selecionadas&&selecionadas[0]==='all'?lojas.map(s=>s.id):(selecionadas||[]));
+  let sel=new Set(
+    selecionadas&&selecionadas[0]==='all' ? lojas.map(s=>s.id) : (selecionadas||[])
+  );
 
   function render(){
     const todas=sel.size===lojas.length;
@@ -2583,8 +2586,8 @@ function renderLojasUsuario(selecionadas){
     /* botão Todas */
     const btnTodas=document.createElement('button');
     btnTodas.type='button';
-    btnTodas.textContent='✓ Todas';
-    btnTodas.style.cssText=`padding:6px 14px;border-radius:20px;border:2px solid ${todas?'var(--accent1)':'var(--border)'};background:${todas?'var(--accent1)':'transparent'};color:${todas?'#fff':'var(--text2)'};font-size:12px;font-weight:700;cursor:pointer;transition:all .2s`;
+    btnTodas.textContent='Todas';
+    btnTodas.style.cssText=`padding:5px 14px;border-radius:20px;border:2px solid ${todas?'var(--accent1)':'var(--border)'};background:${todas?'var(--accent1)':'transparent'};color:${todas?'#fff':'var(--text2)'};font-size:12px;font-weight:700;cursor:pointer;transition:all .2s`;
     btnTodas.onclick=()=>{
       if(todas) sel.clear();
       else lojas.forEach(s=>sel.add(s.id));
@@ -2592,31 +2595,51 @@ function renderLojasUsuario(selecionadas){
     };
     list.appendChild(btnTodas);
 
-    /* separador */
-    const sep=document.createElement('div');
-    sep.style.cssText='width:1px;height:28px;background:var(--border);margin:0 4px;align-self:center';
-    list.appendChild(sep);
+    if(grupo==='custom'){
+      /* para personalizado: agrupa por franquia com separador/label */
+      const havLojas=lojas.filter(s=>cmpIsHav(s.name));
+      const herLojas=lojas.filter(s=>cmpIsHer(s.name));
 
-    /* botão por loja */
-    lojas.forEach(s=>{
-      const ativo=sel.has(s.id);
-      const btn=document.createElement('button');
-      btn.type='button';
-      /* nome curto: remove prefixo da franquia */
-      const nome=s.name.replace(/havaianas\s*/i,'').replace(/havainas\s*/i,'').replace(/hering\s*/i,'').trim();
-      btn.textContent=nome;
-      btn.style.cssText=`padding:6px 14px;border-radius:20px;border:2px solid ${ativo?'var(--accent1)':'var(--border)'};background:${ativo?'rgba(26,45,90,0.1)':'transparent'};color:${ativo?'var(--accent1)':'var(--text2)'};font-size:12px;font-weight:${ativo?'700':'500'};cursor:pointer;transition:all .2s`;
-      btn.onclick=()=>{
-        if(sel.has(s.id)) sel.delete(s.id);
-        else sel.add(s.id);
-        render();
+      const addGroup=(franquia, grupoLojas)=>{
+        if(!grupoLojas.length) return;
+        const sep=document.createElement('div');
+        sep.style.cssText='width:1px;height:26px;background:var(--border);margin:0 6px;align-self:center;flex-shrink:0';
+        list.appendChild(sep);
+        const lbl=document.createElement('span');
+        lbl.textContent=franquia;
+        lbl.style.cssText='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);align-self:center;flex-shrink:0';
+        list.appendChild(lbl);
+        grupoLojas.forEach(s=>addBtn(s));
       };
-      list.appendChild(btn);
-    });
 
-    /* guarda estado no hidden input para salvarUsuario() ler */
-    document.getElementById('lojasUsuarioList').dataset.sel=
-      sel.size===lojas.length?'all':[...sel].join(',');
+      addGroup('Havaianas', havLojas);
+      addGroup('Hering', herLojas);
+    } else {
+      /* havaianas ou hering: só um separador simples */
+      const sep=document.createElement('div');
+      sep.style.cssText='width:1px;height:26px;background:var(--border);margin:0 6px;align-self:center';
+      list.appendChild(sep);
+      lojas.forEach(s=>addBtn(s));
+    }
+
+    /* guarda estado */
+    list.dataset.sel=sel.size===lojas.length?'all':[...sel].join(',');
+  }
+
+  function addBtn(s){
+    const ativo=sel.has(s.id);
+    const btn=document.createElement('button');
+    btn.type='button';
+    /* nome sem prefixo da franquia */
+    const nome=s.name.replace(/havaianas\s*/i,'').replace(/havainas\s*/i,'').replace(/hering\s*/i,'').trim();
+    btn.textContent=nome;
+    btn.style.cssText=`padding:5px 14px;border-radius:20px;border:2px solid ${ativo?'var(--accent1)':'var(--border)'};background:${ativo?'rgba(26,45,90,0.1)':'transparent'};color:${ativo?'var(--accent1)':'var(--text2)'};font-size:12px;font-weight:${ativo?'700':'500'};cursor:pointer;transition:all .2s`;
+    btn.onclick=()=>{
+      if(sel.has(s.id)) sel.delete(s.id);
+      else sel.add(s.id);
+      render();
+    };
+    list.appendChild(btn);
   }
 
   render();
