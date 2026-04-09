@@ -388,6 +388,11 @@ td{padding:13px 14px;vertical-align:middle}
     <span class="badge" id="rbadge">0 vendedores</span>
     <span class="mbadge" id="mmonth"></span>
     <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
+      <div class="toggle" id="toggleFranquia" style="display:none">
+        <button class="tgl-btn on" id="rBtnFAll"  onclick="setRankFranquia('all')">Todas</button>
+        <button class="tgl-btn"    id="rBtnFHav"  onclick="setRankFranquia('hav')">Havaianas</button>
+        <button class="tgl-btn"    id="rBtnFHer"  onclick="setRankFranquia('her')">Hering</button>
+      </div>
       <div class="toggle">
         <button class="tgl-btn on" id="rBtnVend" onclick="setRankMode('vend')">Por Vendedor</button>
         <button class="tgl-btn"    id="rBtnLoja" onclick="setRankMode('loja')">Por Loja</button>
@@ -992,31 +997,8 @@ function drawDash() {
     return;
   }
   drawChart(list);
-  if(rankMode==='loja'){
-    /* para ranking de lojas, precisamos de todos os vendedores da franquia */
-    let listLojas=list;
-    if(!['all','all-havaianas','all-hering'].includes(S.store)){
-      /* loja específica selecionada — busca todos da mesma franquia */
-      const lojaSel=S.stores.find(s=>s.id===S.store);
-      if(lojaSel){
-        const isHer=lojaSel.name.toLowerCase().includes('hering');
-        const isHav=lojaSel.name.toLowerCase().includes('havaianas');
-        let lojasFranquia;
-        if(isHer) lojasFranquia=S.stores.filter(s=>s.name.toLowerCase().includes('hering')).map(s=>s.id);
-        else if(isHav) lojasFranquia=S.stores.filter(s=>s.name.toLowerCase().includes('havaianas')).map(s=>s.id);
-        else lojasFranquia=[lojaSel.id];
-        const sellers=S.sellers.filter(s=>s.ativo!==false&&lojasFranquia.includes(s.storeId));
-        listLojas=sellers.map(s=>{
-          const m=(S.metas[S.month]||{})[s.id]||{mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-          const st=S.stores.find(x=>x.id===s.storeId);
-          return {...s,...m,storeName:st?st.name:''};
-        });
-      }
-    }
-    drawTableLojas(listLojas);
-  } else {
-    drawTable(list);
-  }
+  if(rankMode==='loja') drawTableLojas(list);
+  else drawTable(list);
 }
 
 /* ============================================================
@@ -1063,6 +1045,7 @@ function drawChart(list) {
    TABLE
 ============================================================ */
 let rankMode = 'vend'; /* 'vend' ou 'loja' */
+let rankFranquia = 'all'; /* 'all', 'hav', 'her' */
 
 function setRankMode(m){
   rankMode=m;
@@ -1070,6 +1053,34 @@ function setRankMode(m){
   document.getElementById('rBtnLoja').classList.toggle('on', m==='loja');
   document.getElementById('rankTitle').textContent = m==='loja' ? 'Ranking de Lojas' : 'Ranking de Vendedores';
   document.getElementById('toggleValorQtd').style.display = m==='loja' ? 'none' : '';
+
+  /* mostra filtro de franquia só no modo loja — respeita permissões do usuário */
+  const toggleFranquia=document.getElementById('toggleFranquia');
+  if(m==='loja'){
+    const grupo=currentUser?.grupo||'admin';
+    const permitidas=currentUser?.lojas||['all'];
+    const temHav=grupo==='admin'||grupo==='havaianas'||grupo==='cd'||
+      (grupo==='custom'&&(permitidas[0]==='all'||S.stores.filter(s=>cmpIsHav(s.name)).some(s=>permitidas.includes(s.id))));
+    const temHer=grupo==='admin'||grupo==='hering'||grupo==='cd'||
+      (grupo==='custom'&&(permitidas[0]==='all'||S.stores.filter(s=>cmpIsHer(s.name)).some(s=>permitidas.includes(s.id))));
+
+    /* só mostra filtro se tem acesso a mais de uma franquia */
+    toggleFranquia.style.display=(temHav&&temHer)?'':'none';
+    if(!(temHav&&temHer)){
+      /* define franquia automaticamente */
+      rankFranquia=temHav?'hav':temHer?'her':'all';
+    }
+  } else {
+    toggleFranquia.style.display='none';
+  }
+  draw();
+}
+
+function setRankFranquia(f){
+  rankFranquia=f;
+  document.getElementById('rBtnFAll').classList.toggle('on',f==='all');
+  document.getElementById('rBtnFHav').classList.toggle('on',f==='hav');
+  document.getElementById('rBtnFHer').classList.toggle('on',f==='her');
   draw();
 }
 
@@ -1084,47 +1095,27 @@ function drawTableLojas(list){
   const key=S.month;
   const lojaMap={};
 
-  /* determina quais lojas mostrar baseado na aba selecionada */
-  let lojasParaRanking;
-  if(S.store==='all'){
-    /* Todas as Lojas Geral → todas */
-    lojasParaRanking=storesFiltradas();
-  } else if(S.store==='all-havaianas'){
-    lojasParaRanking=S.stores.filter(s=>s.name.toLowerCase().includes('havaianas'));
-  } else if(S.store==='all-hering'){
-    lojasParaRanking=S.stores.filter(s=>s.name.toLowerCase().includes('hering'));
-  } else {
-    /* loja específica → expande para toda a franquia */
-    const lojaSel=S.stores.find(s=>s.id===S.store);
-    if(lojaSel){
-      const isHer=lojaSel.name.toLowerCase().includes('hering');
-      const isHav=lojaSel.name.toLowerCase().includes('havaianas');
-      if(isHer) lojasParaRanking=S.stores.filter(s=>s.name.toLowerCase().includes('hering'));
-      else if(isHav) lojasParaRanking=S.stores.filter(s=>s.name.toLowerCase().includes('havaianas'));
-      else lojasParaRanking=[lojaSel];
-    } else {
-      lojasParaRanking=storesFiltradas();
-    }
-  }
+  /* lojas disponíveis para este usuário */
+  let lojas=storesFiltradas();
 
-  /* aplica filtro de lojas permitidas do usuário */
-  const permitidas=currentUser?.lojas||['all'];
-  if(permitidas[0]!=='all'){
-    lojasParaRanking=lojasParaRanking.filter(s=>permitidas.includes(s.id));
-  }
+  /* filtra pela franquia selecionada no toggle */
+  if(rankFranquia==='hav') lojas=lojas.filter(s=>cmpIsHav(s.name));
+  else if(rankFranquia==='her') lojas=lojas.filter(s=>cmpIsHer(s.name));
 
-  lojasParaRanking.forEach(s=>{
+  lojas.forEach(s=>{
     lojaMap[s.id]={id:s.id,name:s.name,mV:0,mQ:0,rV:0,rQ:0,rT:0};
   });
 
-  /* soma vendedores na loja */
-  list.forEach(v=>{
-    if(lojaMap[v.storeId]){
-      lojaMap[v.storeId].mV+=v.mV||0;
-      lojaMap[v.storeId].mQ+=v.mQ||0;
-      lojaMap[v.storeId].rV+=v.rV||0;
-      lojaMap[v.storeId].rQ+=v.rQ||0;
-      lojaMap[v.storeId].rT+=v.rT||0;
+  /* soma TODOS os vendedores ativos das lojas do mapa */
+  const todosVendedores=S.sellers.filter(s=>s.ativo!==false&&lojaMap[s.storeId]);
+  todosVendedores.forEach(s=>{
+    const m=(S.metas[key]||{})[s.id]||{};
+    if(lojaMap[s.storeId]){
+      lojaMap[s.storeId].mV+=(m.mV||0);
+      lojaMap[s.storeId].mQ+=(m.mQ||0);
+      lojaMap[s.storeId].rV+=(m.rV||0);
+      lojaMap[s.storeId].rQ+=(m.rQ||0);
+      lojaMap[s.storeId].rT+=(m.rT||0);
     }
   });
 
@@ -1138,10 +1129,10 @@ function drawTableLojas(list){
     }
   });
 
-  let lojas=Object.values(lojaMap).filter(l=>l.rV>0||l.mV>0);
-  lojas.sort((a,b)=>b.rV-a.rV);
+  let lojasArr=Object.values(lojaMap).filter(l=>l.rV>0||l.mV>0);
+  lojasArr.sort((a,b)=>b.rV-a.rV);
 
-  const rows=lojas.map((l,i)=>{
+  const rows=lojasArr.map((l,i)=>{
     const pctV=l.mV>0?(l.rV/l.mV)*100:0;
     const cap=Math.min(pctV,100);
     const col=pctV>=100?'var(--green)':pctV>=75?'var(--blue)':pctV>=50?'var(--warn)':'var(--red)';
@@ -1169,7 +1160,7 @@ function drawTableLojas(list){
     </tr>`;
   }).join('');
 
-  document.getElementById('rbadge').textContent=lojas.length+' loja'+(lojas.length!==1?'s':'');
+  document.getElementById('rbadge').textContent=lojasArr.length+' loja'+(lojasArr.length!==1?'s':'');
   document.getElementById('tbl').innerHTML=`<table>
     <thead><tr><th>#</th><th>Loja</th><th>Meta</th><th>Realizado</th><th>T.M.</th><th>P.A.</th><th>Progresso</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
