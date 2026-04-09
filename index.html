@@ -1095,8 +1095,12 @@ function drawTableLojas(list){
   const key=S.month;
   const lojaMap={};
 
-  /* lojas disponíveis para este usuário */
-  let lojas=storesFiltradas();
+  /* usa TODAS as lojas que o usuário tem permissão de ver
+     independente da aba selecionada */
+  const permitidas=currentUser?.lojas||['all'];
+  let lojas=permitidas[0]==='all'
+    ? S.stores
+    : S.stores.filter(s=>permitidas.includes(s.id));
 
   /* filtra pela franquia selecionada no toggle */
   if(rankFranquia==='hav') lojas=lojas.filter(s=>cmpIsHav(s.name));
@@ -1107,20 +1111,17 @@ function drawTableLojas(list){
   });
 
   /* soma TODOS os vendedores ativos das lojas do mapa */
-  const todosVendedores=S.sellers.filter(s=>s.ativo!==false&&lojaMap[s.storeId]);
-  todosVendedores.forEach(s=>{
+  S.sellers.filter(s=>s.ativo!==false&&lojaMap[s.storeId]).forEach(s=>{
     const m=(S.metas[key]||{})[s.id]||{};
-    if(lojaMap[s.storeId]){
-      lojaMap[s.storeId].mV+=(m.mV||0);
-      lojaMap[s.storeId].mQ+=(m.mQ||0);
-      lojaMap[s.storeId].rV+=(m.rV||0);
-      lojaMap[s.storeId].rQ+=(m.rQ||0);
-      lojaMap[s.storeId].rT+=(m.rT||0);
-    }
+    lojaMap[s.storeId].mV+=(m.mV||0);
+    lojaMap[s.storeId].mQ+=(m.mQ||0);
+    lojaMap[s.storeId].rV+=(m.rV||0);
+    lojaMap[s.storeId].rQ+=(m.rQ||0);
+    lojaMap[s.storeId].rT+=(m.rT||0);
   });
 
   /* inclui extras de loja */
-  const extras=S.extrasLoja&&S.extrasLoja[key]?S.extrasLoja[key]:{};
+  const extras=(S.extrasLoja||{})[key]||{};
   Object.entries(extras).forEach(([lojaId,ex])=>{
     if(lojaMap[lojaId]){
       lojaMap[lojaId].rV+=ex.rV||0;
