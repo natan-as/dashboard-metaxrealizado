@@ -408,7 +408,7 @@
         "rQ": 141
       },
       "sv_1774736437343": {
-        "mV": 116666.67,
+        "mV": 109541.08,
         "mQ": 445,
         "rV": 121892.89,
         "rQ": 1001
@@ -486,7 +486,7 @@
         "rQ": 96
       },
       "sv_1774736656366": {
-        "mV": 100000,
+        "mV": 105949.37,
         "mQ": 917,
         "rV": 114395.57,
         "rQ": 893
@@ -766,6 +766,42 @@
         "mQ": 0,
         "rV": 16654.17,
         "rQ": 303
+      },
+      "sv_1775490227390": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 0,
+        "rQ": 0
+      },
+      "sv_1775490739587": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 0,
+        "rQ": 0
+      },
+      "sv_1775491829785": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 0,
+        "rQ": 0
+      },
+      "sv_1775738999874": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 0,
+        "rQ": 0
+      },
+      "sv_1775739003402": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 0,
+        "rQ": 0
+      },
+      "sv_1775739006363": {
+        "mV": 0,
+        "mQ": 0,
+        "rV": 0,
+        "rQ": 0
       }
     },
     "2026-04": {
@@ -1269,7 +1305,8 @@
         "rT": 1,
         "rPA": 5
       }
-    }
+    },
+    "2026-05": {}
   },
   "month": "2026-04",
   "store": "all",
@@ -4644,5 +4681,67 @@
         "tipo": "hering"
       }
     ]
-  }
+  },
+  "usuarios": [
+    {
+      "id": "u_admin",
+      "user": "admin",
+      "pass": "admin123",
+      "nome": "Admin",
+      "grupo": "admin",
+      "lojas": [
+        "all"
+      ]
+    },
+    {
+      "id": "u_havaianas",
+      "user": "havaianas",
+      "pass": "hav2024",
+      "nome": "Havaianas",
+      "grupo": "havaianas",
+      "lojas": [
+        "all"
+      ]
+    },
+    {
+      "id": "u_hering",
+      "user": "hering",
+      "pass": "her2024",
+      "nome": "Hering",
+      "grupo": "hering",
+      "lojas": [
+        "all"
+      ]
+    },
+    {
+      "id": "u_cd",
+      "user": "cd",
+      "pass": "cd2024",
+      "nome": "CD",
+      "grupo": "cd",
+      "lojas": [
+        "all"
+      ]
+    },
+    {
+      "id": "u_1775746112600",
+      "user": "barbara",
+      "pass": "bar@hav",
+      "nome": "Barbara",
+      "grupo": "havaianas",
+      "lojas": [
+        "all"
+      ]
+    },
+    {
+      "id": "u_1775757446263",
+      "user": "fernanda",
+      "pass": "fer@hrg",
+      "nome": "Fernanda Arruda",
+      "grupo": "hering",
+      "lojas": [
+        "all"
+      ]
+    }
+  ]
 }
