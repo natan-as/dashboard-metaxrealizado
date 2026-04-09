@@ -1231,6 +1231,7 @@ const dz=document.getElementById('dzone');
 dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('over');});
 dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
 dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])readXLSX(e.dataTransfer.files[0]);});
+let _lastImportFile=null; /* guarda referência do arquivo para reprocessar após cadastro */
 function handleFile(e){if(e.target.files[0])readXLSX(e.target.files[0]);}
 
 /* Mapeamento CNPJ (final) → nome da loja Hering */
@@ -1242,6 +1243,7 @@ const CNPJ_LOJA = {
 };
 
 function readXLSX(file){
+  _lastImportFile=file;
   const reader=new FileReader();
   reader.onload=e=>{
     try {
@@ -1470,10 +1472,27 @@ function readXLSX(file){
         </tr>`;
       });
       missed.forEach(n=>{
-        html+=`<tr style="border-bottom:1px solid var(--border);opacity:.5">
-          <td style="padding:7px 10px">${n}</td>
-          <td colspan="3" style="padding:7px 10px;color:var(--text2)">—</td>
-          <td style="padding:7px 10px;text-align:center;color:var(--red);font-size:11px">✗ não cadastrado</td>
+        /* extrai nome e loja do formato "Nome (Loja)" ou só "Nome" */
+        const match=n.match(/^(.+?)\s+\((.+)\)$/);
+        const nomeVend=match?match[1]:n;
+        const nomeLojaVend=match?match[2]:'';
+        const lojaId=nomeLojaVend?S.stores.find(s=>s.name===nomeLojaVend)?.id||'':'';
+        const lojaOpts=S.stores.map(s=>`<option value="${s.id}"${s.id===lojaId?' selected':''}>${s.name}</option>`).join('');
+        const uid='miss_'+Math.random().toString(36).slice(2,8);
+        html+=`<tr style="border-bottom:1px solid var(--border);background:#fffbf0" id="row_${uid}">
+          <td style="padding:7px 10px;color:var(--warn);font-weight:600">${nomeVend}</td>
+          <td style="padding:7px 10px;color:var(--text2)">${nomeLojaVend||'—'}</td>
+          <td colspan="2" style="padding:7px 10px">
+            <div id="form_${uid}" style="display:none;gap:6px;align-items:center;flex-wrap:wrap">
+              <select id="sel_${uid}" style="padding:4px 8px;border-radius:var(--rs);border:1px solid var(--border);font-size:12px;flex:1">${lojaOpts}</select>
+              <button onclick="quickAddVend('${uid}','${nomeVend.replace(/'/g,"\'")}')" style="padding:4px 10px;border-radius:var(--rs);border:none;background:var(--accent1);color:#fff;font-size:11px;font-weight:700;cursor:pointer">💾 Salvar</button>
+              <button onclick="document.getElementById('form_${uid}').style.display='none';document.getElementById('btn_${uid}').style.display='inline-flex'" style="padding:4px 8px;border-radius:var(--rs);border:1px solid var(--border);background:transparent;font-size:11px;cursor:pointer">✕</button>
+            </div>
+            <span id="done_${uid}" style="display:none;color:#16a34a;font-size:11px;font-weight:700">✓ Cadastrado!</span>
+          </td>
+          <td style="padding:7px 10px;text-align:center">
+            <button id="btn_${uid}" onclick="document.getElementById('form_${uid}').style.display='flex';document.getElementById('btn_${uid}').style.display='none'" style="padding:3px 10px;border-radius:var(--rs);border:1px solid var(--accent2);background:transparent;color:var(--accent2);font-size:11px;font-weight:700;cursor:pointer">+ Cadastrar</button>
+          </td>
         </tr>`;
       });
       html+='</tbody></table>';
@@ -1488,6 +1507,19 @@ function readXLSX(file){
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+function quickAddVend(uid, nome){
+  const storeId=document.getElementById('sel_'+uid)?.value;
+  if(!storeId) return toast('Selecione a loja','err');
+  if(S.sellers.find(s=>s.name.toLowerCase()===nome.toLowerCase()&&s.storeId===storeId))
+    return toast('Vendedor já cadastrado nessa loja','err');
+  /* cadastra o vendedor */
+  S.sellers.push({id:'sv_'+Date.now(),name:nome,storeId,ativo:true});
+  save();
+  toast('✅ '+nome+' cadastrado! Atualizando preview...');
+  /* reprocessa o arquivo automaticamente para incluir o vendedor recém-cadastrado */
+  if(_lastImportFile) readXLSX(_lastImportFile);
 }
 
 function confirmImport(){
