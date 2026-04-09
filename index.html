@@ -275,7 +275,12 @@ td{padding:13px 14px;vertical-align:middle}
     </div>
     <div class="login-fg">
       <label class="login-lbl">Senha</label>
-      <input class="login-inp" id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <div style="position:relative">
+        <input class="login-inp" id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:42px">
+        <button type="button" onclick="toggleSenhaVisivel()" id="btnVerSenha" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text2);font-size:16px;padding:4px;line-height:1" title="Mostrar/ocultar senha">
+          👁
+        </button>
+      </div>
     </div>
     <button class="login-btn" onclick="doLogin()">Entrar</button>
     <div class="login-err" id="loginErr"></div>
@@ -1637,6 +1642,20 @@ function saveUsers(users){ localStorage.setItem('m360users',JSON.stringify(users
 let USERS=loadUsers();
 
 let currentUser = null;
+
+function toggleSenhaVisivel(){
+  const inp=document.getElementById('loginPass');
+  const btn=document.getElementById('btnVerSenha');
+  if(inp.type==='password'){
+    inp.type='text';
+    btn.textContent='🙈';
+    btn.title='Ocultar senha';
+  } else {
+    inp.type='password';
+    btn.textContent='👁';
+    btn.title='Mostrar senha';
+  }
+}
 
 function doLogin() {
   USERS = loadUsers();
