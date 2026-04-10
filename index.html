@@ -544,6 +544,9 @@ td{padding:13px 14px;vertical-align:middle}
         </div>
         <button class="btn btn-primary" onclick="addVend()">+ Adicionar Vendedor</button>
         <hr class="divider">
+        <div style="position:relative;margin-bottom:12px">
+          <input class="finp" id="vendSearch" placeholder="🔍 Buscar vendedor por nome ou loja..." oninput="rVends()" style="padding-left:14px">
+        </div>
         <div id="vendList"></div>
       </div>
 
@@ -1226,6 +1229,8 @@ function atab(t) {
   if(t==='vends'){
     document.getElementById('newVendFranquia').value='';
     document.getElementById('newVendStore').innerHTML='<option value="">Selecione a franquia primeiro</option>';
+    const vs=document.getElementById('vendSearch');
+    if(vs) vs.value='';
     rVends();
   }
   if(t==='metas'){
@@ -1280,8 +1285,22 @@ function rmStore(id){
 /* sellers */
 function rVends(){
   const el=document.getElementById('vendList');
+  const termo=(document.getElementById('vendSearch')?.value||'').toLowerCase().trim();
   if(!S.sellers.length){el.innerHTML='<p style="font-size:13px;color:var(--text2)">Nenhum vendedor.</p>';return;}
-  el.innerHTML=S.sellers.map(s=>{
+
+  const filtrados=termo
+    ? S.sellers.filter(s=>{
+        const st=S.stores.find(x=>x.id===s.storeId);
+        return s.name.toLowerCase().includes(termo)||(st&&st.name.toLowerCase().includes(termo));
+      })
+    : S.sellers;
+
+  if(!filtrados.length){
+    el.innerHTML=`<p style="font-size:13px;color:var(--text2)">Nenhum vendedor encontrado para "<strong>${termo}</strong>".</p>`;
+    return;
+  }
+
+  el.innerHTML=filtrados.map(s=>{
     const st=S.stores.find(x=>x.id===s.storeId);
     const ativo=s.ativo!==false;
     return `<div class="sitem" id="sitem_${s.id}" style="opacity:${ativo?1:0.5}">
@@ -1293,7 +1312,7 @@ function rVends(){
         <div style="font-size:12px;color:var(--text2)">${st?st.name:'–'}</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center">
-        <button class="btn btn-ghost btn-sm" onclick="toggleVendAtivo('${s.id}')" title="${ativo?'Inativar':'Ativar'}" style="color:${ativo?'var(--accent2)':'#16a34a'}">
+        <button class="btn btn-ghost btn-sm" onclick="toggleVendAtivo('${s.id}')" style="color:${ativo?'var(--accent2)':'#16a34a'}">
           ${ativo?'⏸ Inativar':'▶ Ativar'}
         </button>
         <button class="btn btn-ghost btn-sm" onclick="editVend('${s.id}')">✏️ Editar</button>
