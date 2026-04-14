@@ -393,6 +393,10 @@ td{padding:13px 14px;vertical-align:middle}
         <button class="tgl-btn"    id="rBtnFHav"  onclick="setRankFranquia('hav')">Havaianas</button>
         <button class="tgl-btn"    id="rBtnFHer"  onclick="setRankFranquia('her')">Hering</button>
       </div>
+      <div class="toggle" id="toggleLojaOrdem" style="display:none">
+        <button class="tgl-btn on" id="rBtnLojaReal" onclick="setLojaOrdem('real')">Por Valor Realizado</button>
+        <button class="tgl-btn"    id="rBtnLojaMeta" onclick="setLojaOrdem('meta')">Por % Meta</button>
+      </div>
       <div class="toggle">
         <button class="tgl-btn on" id="rBtnVend" onclick="setRankMode('vend')">Por Vendedor</button>
         <button class="tgl-btn"    id="rBtnLoja" onclick="setRankMode('loja')">Por Loja</button>
@@ -1049,6 +1053,14 @@ function drawChart(list) {
 ============================================================ */
 let rankMode = 'vend'; /* 'vend' ou 'loja' */
 let rankFranquia = 'all'; /* 'all', 'hav', 'her' */
+let lojaOrdem = 'real'; /* 'real' = por % realizado, 'meta' = por valor da meta */
+
+function setLojaOrdem(o){
+  lojaOrdem=o;
+  document.getElementById('rBtnLojaReal').classList.toggle('on',o==='real');
+  document.getElementById('rBtnLojaMeta').classList.toggle('on',o==='meta');
+  draw();
+}
 
 function setRankMode(m){
   rankMode=m;
@@ -1056,6 +1068,7 @@ function setRankMode(m){
   document.getElementById('rBtnLoja').classList.toggle('on', m==='loja');
   document.getElementById('rankTitle').textContent = m==='loja' ? 'Ranking de Lojas' : 'Ranking de Vendedores';
   document.getElementById('toggleValorQtd').style.display = m==='loja' ? 'none' : '';
+  document.getElementById('toggleLojaOrdem').style.display = m==='loja' ? '' : 'none';
 
   /* mostra filtro de franquia só no modo loja — respeita permissões do usuário */
   const toggleFranquia=document.getElementById('toggleFranquia');
@@ -1135,9 +1148,14 @@ function drawTableLojas(list){
 
   let lojasArr=Object.values(lojaMap);
   lojasArr.sort((a,b)=>{
-    const pctA=a.mV>0?(a.rV/a.mV)*100:0;
-    const pctB=b.mV>0?(b.rV/b.mV)*100:0;
-    return pctB-pctA;
+    if(lojaOrdem==='meta'){
+      /* por % de meta atingida */
+      const pctA=a.mV>0?(a.rV/a.mV)*100:0;
+      const pctB=b.mV>0?(b.rV/b.mV)*100:0;
+      return pctB-pctA;
+    }
+    /* por valor realizado líquido */
+    return b.rV-a.rV;
   });
 
   const rows=lojasArr.map((l,i)=>{
