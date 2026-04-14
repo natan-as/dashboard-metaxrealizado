@@ -1116,8 +1116,8 @@ function drawTableLojas(list){
   /* soma TODOS os vendedores ativos das lojas do mapa */
   S.sellers.filter(s=>s.ativo!==false).forEach(s=>{
     const m=(S.metas[key]||{})[s.id]||{};
-    /* usa lojaId salvo na importação se existir, senão usa o storeId cadastrado */
     const lojaReal=m.lojaId&&lojaMap[m.lojaId] ? m.lojaId : s.storeId;
+    console.log(`Vendedor: ${s.name} | storeId: ${s.storeId} | lojaReal: ${lojaReal} | no mapa: ${!!lojaMap[lojaReal]} | rV: ${m.rV||0} | mV: ${m.mV||0}`);
     if(lojaMap[lojaReal]){
       lojaMap[lojaReal].mV+=(m.mV||0);
       lojaMap[lojaReal].mQ+=(m.mQ||0);
@@ -1126,6 +1126,7 @@ function drawTableLojas(list){
       lojaMap[lojaReal].rT+=(m.rT||0);
     }
   });
+  console.log('lojaMap final:', JSON.stringify(Object.entries(lojaMap).map(([id,l])=>({id,name:l.name,mV:l.mV,rV:l.rV}))));
 
   /* inclui extras de loja */
   const extras=(S.extrasLoja||{})[key]||{};
