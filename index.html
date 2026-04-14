@@ -1116,8 +1116,8 @@ function drawTableLojas(list){
   /* soma TODOS os vendedores ativos das lojas do mapa */
   S.sellers.filter(s=>s.ativo!==false).forEach(s=>{
     const m=(S.metas[key]||{})[s.id]||{};
-    /* usa lojaId real salvo na importação, ou o storeId cadastrado */
-    const lojaReal=m.lojaId||s.storeId;
+    /* usa lojaId salvo na importação se existir, senão usa o storeId cadastrado */
+    const lojaReal=m.lojaId&&lojaMap[m.lojaId] ? m.lojaId : s.storeId;
     if(lojaMap[lojaReal]){
       lojaMap[lojaReal].mV+=(m.mV||0);
       lojaMap[lojaReal].mQ+=(m.mQ||0);
@@ -1137,7 +1137,7 @@ function drawTableLojas(list){
     }
   });
 
-  let lojasArr=Object.values(lojaMap).filter(l=>l.rV>0||l.mV>0);
+  let lojasArr=Object.values(lojaMap);
   lojasArr.sort((a,b)=>{
     const pctA=a.mV>0?(a.rV/a.mV)*100:0;
     const pctB=b.mV>0?(b.rV/b.mV)*100:0;
@@ -1753,16 +1753,35 @@ function confirmImport(){
   if(!S.metas[key]) S.metas[key]={};
 
   pending.forEach(p=>{
-    /* p._chave = "sellerId_lojaId" quando vendeu em loja diferente da cadastrada */
-    const lojaId=p._chave?p._chave.split('_').slice(1).join('_'):null;
+    /* identifica a loja real desta entrada */
+    const lojaId=p._chave
+      ? p._chave.replace(p.id+'_','')   /* remove sellerId_ do início */
+      : (p.storeId||S.sellers.find(s=>s.id===p.id)?.storeId||null);
 
+    /* salva pelo sellerId normal (para metas e ranking por vendedor) */
     if(!S.metas[key][p.id]) S.metas[key][p.id]={mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-    S.metas[key][p.id].rV=p.rV;
-    S.metas[key][p.id].rQ=p.rQ;
-    if(p.rT!=null) S.metas[key][p.id].rT=p.rT;
-    if(p.rPA!=null) S.metas[key][p.id].rPA=p.rPA;
-    /* guarda lojaId real para uso no ranking de lojas */
-    S.metas[key][p.id].lojaId=lojaId||p.storeId||S.sellers.find(s=>s.id===p.id)?.storeId||null;
+    /* se já existe entrada e veio de loja diferente, soma; senão, substitui */
+    if(S.metas[key][p.id].lojaId&&S.metas[key][p.id].lojaId!==lojaId){
+      S.metas[key][p.id].rV+=p.rV;
+      S.metas[key][p.id].rQ+=p.rQ;
+      S.metas[key][p.id].rT=(S.metas[key][p.id].rT||0)+(p.rT||0);
+    } else {
+      S.metas[key][p.id].rV=p.rV;
+      S.metas[key][p.id].rQ=p.rQ;
+      if(p.rT!=null) S.metas[key][p.id].rT=p.rT;
+      if(p.rPA!=null) S.metas[key][p.id].rPA=p.rPA;
+    }
+    S.metas[key][p.id].lojaId=lojaId;
+
+    /* também salva no extrasLoja para o ranking de lojas funcionar corretamente */
+    if(lojaId){
+      if(!S.extrasLoja) S.extrasLoja={};
+      if(!S.extrasLoja[key]) S.extrasLoja[key]={};
+      if(!S.extrasLoja[key]['_vend_'+lojaId]) S.extrasLoja[key]['_vend_'+lojaId]={rV:0,rQ:0,rT:0,lojaId};
+      S.extrasLoja[key]['_vend_'+lojaId].rV+=(p.rV||0);
+      S.extrasLoja[key]['_vend_'+lojaId].rQ+=(p.rQ||0);
+      S.extrasLoja[key]['_vend_'+lojaId].rT+=(p.rT||0);
+    }
   });
   if(!S.extrasLoja) S.extrasLoja={};
   if(!S.extrasLoja[key]) S.extrasLoja[key]={};
