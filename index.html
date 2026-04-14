@@ -1096,39 +1096,34 @@ function setTableM(m) {
 
 function drawTableLojas(list){
   const key=S.month;
-  const lojaMap={};
 
-  /* usa TODAS as lojas que o usuário tem permissão de ver
-     independente da aba selecionada */
+  /* lojas disponíveis para este usuário */
   const permitidas=currentUser?.lojas||['all'];
-  let lojas=permitidas[0]==='all'
-    ? S.stores
-    : S.stores.filter(s=>permitidas.includes(s.id));
-
-  /* filtra pela franquia selecionada no toggle */
+  let lojas=permitidas[0]==='all' ? S.stores : S.stores.filter(s=>permitidas.includes(s.id));
   if(rankFranquia==='hav') lojas=lojas.filter(s=>cmpIsHav(s.name));
   else if(rankFranquia==='her') lojas=lojas.filter(s=>cmpIsHer(s.name));
 
-  lojas.forEach(s=>{
-    lojaMap[s.id]={id:s.id,name:s.name,mV:0,mQ:0,rV:0,rQ:0,rT:0};
+  /* inicializa mapa */
+  const lojaMap={};
+  lojas.forEach(s=>{ lojaMap[s.id]={id:s.id,name:s.name,mV:0,mQ:0,rV:0,rQ:0,rT:0}; });
+
+  /* para cada entrada em S.metas[key], encontra o vendedor e sua loja */
+  const metasMes=S.metas[key]||{};
+  Object.entries(metasMes).forEach(([sellerId, m])=>{
+    /* encontra o vendedor cadastrado */
+    const seller=S.sellers.find(s=>s.id===sellerId);
+    if(!seller||seller.ativo===false) return;
+    /* determina a loja: lojaId salvo na importação ou storeId cadastrado */
+    const lojaId=m.lojaId||seller.storeId;
+    if(!lojaMap[lojaId]) return;
+    lojaMap[lojaId].mV+=(m.mV||0);
+    lojaMap[lojaId].mQ+=(m.mQ||0);
+    lojaMap[lojaId].rV+=(m.rV||0);
+    lojaMap[lojaId].rQ+=(m.rQ||0);
+    lojaMap[lojaId].rT+=(m.rT||0);
   });
 
-  /* soma TODOS os vendedores ativos das lojas do mapa */
-  S.sellers.filter(s=>s.ativo!==false).forEach(s=>{
-    const m=(S.metas[key]||{})[s.id]||{};
-    const lojaReal=m.lojaId&&lojaMap[m.lojaId] ? m.lojaId : s.storeId;
-    console.log(`Vendedor: ${s.name} | storeId: ${s.storeId} | lojaReal: ${lojaReal} | no mapa: ${!!lojaMap[lojaReal]} | rV: ${m.rV||0} | mV: ${m.mV||0}`);
-    if(lojaMap[lojaReal]){
-      lojaMap[lojaReal].mV+=(m.mV||0);
-      lojaMap[lojaReal].mQ+=(m.mQ||0);
-      lojaMap[lojaReal].rV+=(m.rV||0);
-      lojaMap[lojaReal].rQ+=(m.rQ||0);
-      lojaMap[lojaReal].rT+=(m.rT||0);
-    }
-  });
-  console.log('lojaMap final:', JSON.stringify(Object.entries(lojaMap).map(([id,l])=>({id,name:l.name,mV:l.mV,rV:l.rV}))));
-
-  /* inclui extras de loja */
+  /* inclui extras de loja (Venda Funcionário etc) */
   const extras=(S.extrasLoja||{})[key]||{};
   Object.entries(extras).forEach(([lojaId,ex])=>{
     if(lojaMap[lojaId]){
