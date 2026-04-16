@@ -980,7 +980,8 @@ function drawDash() {
   const totRV=list.reduce((s,v)=>s+(v.rV||0),0) + extraRV;
   const totMQ=list.reduce((s,v)=>s+(v.mQ||0),0);
   const totRQ=list.reduce((s,v)=>s+(v.rQ||0),0) + extraRQ;
-  const totRT=list.reduce((s,v)=>s+(v.rT||0),0) + (Object.values(extras).reduce((s,e)=>s+(e.rT||0),0));
+  const totRT=list.reduce((s,v)=>s+(v.rT||0),0);
+  /* TM e PA calculados apenas sobre atendimentos dos vendedores (excluindo extras sem rT confiável) */
   const pctV = totMV>0?(totRV/totMV)*100:0;
   const bat  = list.filter(v=>v.pV>=100).length;
   /* TM = Vlr Líquido / Tickets; PA = Itens / Tickets */
@@ -1767,43 +1768,24 @@ function confirmImport(){
   if(!S.metas[key]) S.metas[key]={};
 
   pending.forEach(p=>{
-    /* identifica a loja real desta entrada */
     const lojaId=p._chave
-      ? p._chave.replace(p.id+'_','')   /* remove sellerId_ do início */
+      ? p._chave.replace(p.id+'_','')
       : (p.storeId||S.sellers.find(s=>s.id===p.id)?.storeId||null);
 
-    /* salva pelo sellerId normal (para metas e ranking por vendedor) */
+    /* SEMPRE substitui — o relatório já vem acumulado do mês inteiro */
     if(!S.metas[key][p.id]) S.metas[key][p.id]={mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-    /* se já existe entrada e veio de loja diferente, soma; senão, substitui */
-    if(S.metas[key][p.id].lojaId&&S.metas[key][p.id].lojaId!==lojaId){
-      S.metas[key][p.id].rV+=p.rV;
-      S.metas[key][p.id].rQ+=p.rQ;
-      S.metas[key][p.id].rT=(S.metas[key][p.id].rT||0)+(p.rT||0);
-    } else {
-      S.metas[key][p.id].rV=p.rV;
-      S.metas[key][p.id].rQ=p.rQ;
-      if(p.rT!=null) S.metas[key][p.id].rT=p.rT;
-      if(p.rPA!=null) S.metas[key][p.id].rPA=p.rPA;
-    }
-    S.metas[key][p.id].lojaId=lojaId;
-
-    /* também salva no extrasLoja para o ranking de lojas funcionar corretamente */
-    if(lojaId){
-      if(!S.extrasLoja) S.extrasLoja={};
-      if(!S.extrasLoja[key]) S.extrasLoja[key]={};
-      if(!S.extrasLoja[key]['_vend_'+lojaId]) S.extrasLoja[key]['_vend_'+lojaId]={rV:0,rQ:0,rT:0,lojaId};
-      S.extrasLoja[key]['_vend_'+lojaId].rV+=(p.rV||0);
-      S.extrasLoja[key]['_vend_'+lojaId].rQ+=(p.rQ||0);
-      S.extrasLoja[key]['_vend_'+lojaId].rT+=(p.rT||0);
-    }
+    S.metas[key][p.id].rV  = p.rV;
+    S.metas[key][p.id].rQ  = p.rQ;
+    S.metas[key][p.id].rT  = p.rT  != null ? p.rT  : (S.metas[key][p.id].rT||0);
+    S.metas[key][p.id].rPA = p.rPA != null ? p.rPA : (S.metas[key][p.id].rPA||0);
+    S.metas[key][p.id].lojaId = lojaId;
   });
+
+  /* extras (Venda Funcionário etc) — também substitui */
   if(!S.extrasLoja) S.extrasLoja={};
   if(!S.extrasLoja[key]) S.extrasLoja[key]={};
   Object.entries(pendingExtra).forEach(([lojaId,val])=>{
-    if(!S.extrasLoja[key][lojaId]) S.extrasLoja[key][lojaId]={rV:0,rQ:0,rT:0};
-    S.extrasLoja[key][lojaId].rV=val.rV;
-    S.extrasLoja[key][lojaId].rQ=val.rQ;
-    S.extrasLoja[key][lojaId].rT=val.rT||0;
+    S.extrasLoja[key][lojaId]={rV:val.rV, rQ:val.rQ, rT:val.rT||0};
   });
   S.lastImport = lastImportDate || new Date().toLocaleDateString('pt-BR');
   save(); closeM('importModal'); draw();
