@@ -518,8 +518,15 @@ td{padding:13px 14px;vertical-align:middle}
       <div class="apanel on" id="p-lojas">
         <div class="fg">
           <label class="flbl">Adicionar loja</label>
-          <div class="irow">
-            <input class="finp" id="newStore" placeholder="Nome da loja">
+          <div style="display:grid;grid-template-columns:1fr 140px auto;gap:8px;align-items:end">
+            <div>
+              <label class="flbl" style="font-size:10px">Nome da loja</label>
+              <input class="finp" id="newStore" placeholder="Ex: Havaianas Sinop">
+            </div>
+            <div>
+              <label class="flbl" style="font-size:10px">Código H (Havaianas)</label>
+              <input class="finp" id="newStoreHCode" placeholder="Ex: H474" style="text-transform:uppercase">
+            </div>
             <button class="btn btn-primary" onclick="addStore()">+ Adicionar</button>
           </div>
         </div>
@@ -1278,17 +1285,39 @@ function filtrarLojasMeta(){
 
 /* stores */
 function rStores(){
-  document.getElementById('storeList').innerHTML=
-    S.stores.map(s=>`<div class="tag"><span>${s.name}</span><button onclick="rmStore('${s.id}')">✕</button></div>`).join('')
-    ||'<p style="font-size:13px;color:var(--text2)">Nenhuma loja.</p>';
+  const el=document.getElementById('storeList');
+  if(!S.stores.length){el.innerHTML='<p style="font-size:13px;color:var(--text2)">Nenhuma loja.</p>';return;}
+  el.innerHTML=S.stores.map(s=>{
+    const isHav=cmpIsHav(s.name);
+    const hcode=s.hcode||'';
+    return `<div class="tag" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--rs);background:var(--surface2);border:1px solid var(--border);margin-bottom:4px" id="stag_${s.id}">
+      <span style="font-weight:600;font-size:13px;flex:1">${s.name}</span>
+      ${isHav?`<div style="display:flex;align-items:center;gap:4px">
+        <span style="font-size:10px;color:var(--text2);white-space:nowrap">Código H:</span>
+        <input class="finp" value="${hcode}" placeholder="H000" maxlength="8"
+          style="width:70px;padding:3px 6px;font-size:12px;text-transform:uppercase"
+          onchange="saveHCode('${s.id}',this.value)"
+          oninput="this.value=this.value.toUpperCase()">
+      </div>`:''}
+      <button class="btn btn-ghost btn-sm" onclick="rmStore('${s.id}')">✕</button>
+    </div>`;
+  }).join('');
 }
+
+function saveHCode(storeId, val){
+  const s=S.stores.find(x=>x.id===storeId);
+  if(s){ s.hcode=val.trim().toUpperCase(); save(); toast('Código H salvo!'); }
+}
+
 function addStore(){
   const v=document.getElementById('newStore').value.trim();
+  const hcode=document.getElementById('newStoreHCode').value.trim().toUpperCase();
   if(!v) return toast('Digite o nome','err');
   if(S.stores.find(s=>s.name.toLowerCase()===v.toLowerCase())) return toast('Já existe','err');
-  S.stores.push({id:'st_'+Date.now(),name:v});
+  S.stores.push({id:'st_'+Date.now(),name:v,hcode:hcode||''});
   document.getElementById('newStore').value='';
-  rStores();
+  document.getElementById('newStoreHCode').value='';
+  rStores(); save();
 }
 function rmStore(id){
   if(!confirm('Remover esta loja e seus vendedores?')) return;
@@ -1483,6 +1512,21 @@ const CNPJ_LOJA = {
   '0001-14': 'Hering Lucas do Rio Verde',
 };
 
+/* mapeamento explícito de código H → nome da loja Havaianas cadastrada
+   usado quando o match por palavras falha (ex: H751 RONDON PLAZA → Rondonópolis) */
+const HAV_HCODE = {
+  'H474': 'Havaianas Sinop',
+  'H479': 'Havaianas Sorriso',
+  'H731': 'Havaianas Goiabeiras',
+  'H748': 'Havaianas Várzea Grande',
+  'H749': 'Havaianas Estação',
+  'H750': 'Havaianas 3 Américas',
+  'H751': 'Havaianas Rondonópolis',
+  'H752': 'Havaianas Pantanal',
+  'H792': 'Havaianas Lucas do Rio Verde',
+  'H944': 'Havaianas Aeroporto',
+};
+
 function readXLSX(file){
   _lastImportFile=file;
   const reader=new FileReader();
@@ -1643,13 +1687,32 @@ function readXLSX(file){
           if(iLoja>=0){
             const lojaRaw=String(row[iLoja]||'').trim();
             if(lojaRaw){
-              lojaObj=S.stores.find(s=>{
-                const nl=s.name.toLowerCase();
-                const lr=lojaRaw.toLowerCase();
-                if(nl===lr) return true;
-                const palavras=nl.split(/\s+/).filter(p=>p.length>=4&&!['shopping','havaianas','havainas','hering','park','centro'].includes(p));
-                return palavras.length>0&&palavras.every(p=>lr.includes(p)||lr.split(/\s+/).some(w=>w.startsWith(p.slice(0,5))||p.startsWith(w.slice(0,5))));
-              });
+              /* 1) tenta pelo código H cadastrado na loja — mais confiável */
+              const hCode=(lojaRaw.match(/^(H\d+)/i)||[])[1]?.toUpperCase();
+              if(hCode){
+                /* primeiro tenta pelo hcode cadastrado na loja */
+                lojaObj=S.stores.find(s=>s.hcode&&s.hcode.toUpperCase()===hCode);
+                /* fallback: mapa estático */
+                if(!lojaObj&&HAV_HCODE[hCode]){
+                  lojaObj=S.stores.find(s=>s.name.toLowerCase()===HAV_HCODE[hCode].toLowerCase());
+                }
+              }
+              /* 2) fallback: match por palavras-chave */
+              if(!lojaObj){
+                const lr=lojaRaw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+                const stopW=new Set(['shopping','havaianas','havainas','hering','park','centro','internacional','marechal','plaza']);
+                const lrWords=lr.replace(/[^a-z0-9 ]/g,'').split(/\s+/).filter(w=>w.length>=4);
+                lojaObj=S.stores.find(s=>{
+                  const nl=s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+                  if(nl===lr) return true;
+                  const palavras=nl.split(/\s+/).filter(p=>p.length>=4&&!stopW.has(p));
+                  if(!palavras.length) return false;
+                  return palavras.every(p=>
+                    lr.includes(p)||
+                    lrWords.some(w=>w.length>6&&p.length>6&&(p.startsWith(w)||w.startsWith(p)))
+                  );
+                });
+              }
             }
           }
 
