@@ -518,14 +518,22 @@ td{padding:13px 14px;vertical-align:middle}
       <div class="apanel on" id="p-lojas">
         <div class="fg">
           <label class="flbl">Adicionar loja</label>
-          <div style="display:grid;grid-template-columns:1fr 140px auto;gap:8px;align-items:end">
+          <div style="display:grid;grid-template-columns:160px 1fr 140px auto;gap:8px;align-items:end">
+            <div>
+              <label class="flbl" style="font-size:10px">Franquia</label>
+              <select class="fsel" id="newStoreFranquia" onchange="toggleHCodeField()">
+                <option value="">Selecione...</option>
+                <option value="havaianas">Havaianas</option>
+                <option value="hering">Hering</option>
+              </select>
+            </div>
             <div>
               <label class="flbl" style="font-size:10px">Nome da loja</label>
               <input class="finp" id="newStore" placeholder="Ex: Havaianas Sinop">
             </div>
-            <div>
-              <label class="flbl" style="font-size:10px">Código H (Havaianas)</label>
-              <input class="finp" id="newStoreHCode" placeholder="Ex: H474" style="text-transform:uppercase">
+            <div id="hCodeWrap" style="display:none">
+              <label class="flbl" style="font-size:10px">Código H</label>
+              <input class="finp" id="newStoreHCode" placeholder="Ex: H474" maxlength="8" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
             </div>
             <button class="btn btn-primary" onclick="addStore()">+ Adicionar</button>
           </div>
@@ -1309,14 +1317,24 @@ function saveHCode(storeId, val){
   if(s){ s.hcode=val.trim().toUpperCase(); save(); toast('Código H salvo!'); }
 }
 
+function toggleHCodeField(){
+  const franquia=document.getElementById('newStoreFranquia').value;
+  document.getElementById('hCodeWrap').style.display=franquia==='havaianas'?'block':'none';
+  if(franquia!=='havaianas') document.getElementById('newStoreHCode').value='';
+}
+
 function addStore(){
+  const franquia=document.getElementById('newStoreFranquia').value;
   const v=document.getElementById('newStore').value.trim();
   const hcode=document.getElementById('newStoreHCode').value.trim().toUpperCase();
-  if(!v) return toast('Digite o nome','err');
+  if(!franquia) return toast('Selecione a franquia','err');
+  if(!v) return toast('Digite o nome da loja','err');
   if(S.stores.find(s=>s.name.toLowerCase()===v.toLowerCase())) return toast('Já existe','err');
-  S.stores.push({id:'st_'+Date.now(),name:v,hcode:hcode||''});
+  S.stores.push({id:'st_'+Date.now(),name:v,hcode:franquia==='havaianas'?(hcode||''):''});
+  document.getElementById('newStoreFranquia').value='';
   document.getElementById('newStore').value='';
   document.getElementById('newStoreHCode').value='';
+  document.getElementById('hCodeWrap').style.display='none';
   rStores(); save();
 }
 function rmStore(id){
