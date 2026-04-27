@@ -956,49 +956,15 @@ function getEnriched() {
   const key = S.month;
   const metasMes = S.metas[key]||{};
 
-  /* constrói lista expandida: um item por combinação vendedor+loja */
-  const resultado = [];
-
-  /* primeiro coleta entradas com chave composta (sellerId_lojaId) */
-  const chavasCompostas = new Set();
-  Object.entries(metasMes).forEach(([chave, m])=>{
-    if(!m.sellerId) return; /* entrada antiga sem sellerId */
-    const seller = S.sellers.find(s=>s.id===m.sellerId);
-    if(!seller||seller.ativo===false) return;
-    const lojaId = m.lojaId||seller.storeId;
-    const st = S.stores.find(x=>x.id===lojaId);
-    if(!st) return;
-
-    /* verifica se esta loja está no filtro atual */
-    const lojaNoFiltro = S.store==='all' ||
-      (S.store==='all-havaianas'&&cmpIsHav(st.name)) ||
-      (S.store==='all-hering'&&cmpIsHer(st.name)) ||
-      S.store===lojaId;
-    if(!lojaNoFiltro) return;
-
-    const pV = m.mV>0?(m.rV/m.mV)*100:0;
-    const pQ = m.mQ>0?(m.rQ/m.mQ)*100:0;
-    resultado.push({...seller,...m,storeId:lojaId,storeName:st.name,pV,pQ,_chave:chave});
-    chavasCompostas.add(m.sellerId+'_'+lojaId);
+  return sellers.map(s => {
+    const m = metasMes[s.id] || {mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
+    /* usa a loja real onde vendeu (lojaId) ou a loja cadastrada */
+    const lojaId = m.lojaId || s.storeId;
+    const st = S.stores.find(x=>x.id===lojaId) || S.stores.find(x=>x.id===s.storeId);
+    const pV = m.mV>0 ? (m.rV/m.mV)*100 : 0;
+    const pQ = m.mQ>0 ? (m.rQ/m.mQ)*100 : 0;
+    return {...s,...m, storeId: lojaId, storeName: st?st.name:'', pV, pQ};
   });
-
-  /* depois adiciona vendedores sem entrada importada (só com meta ou sem nada) */
-  sellers.forEach(s=>{
-    const lojaId = s.storeId;
-    const chaveSimples = s.id+'_'+lojaId;
-    if(chavasCompostas.has(chaveSimples)) return; /* já incluído acima */
-
-    /* tenta chave simples (dados antigos sem lojaId) */
-    const m = metasMes[s.id]||{mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-    if(m.sellerId) return; /* já processado acima com chave composta */
-
-    const st = S.stores.find(x=>x.id===lojaId);
-    const pV = m.mV>0?(m.rV/m.mV)*100:0;
-    const pQ = m.mQ>0?(m.rQ/m.mQ)*100:0;
-    resultado.push({...s,...m,storeName:st?st.name:'',pV,pQ});
-  });
-
-  return resultado;
 }
 
 /* ============================================================
@@ -1176,13 +1142,9 @@ function drawTableLojas(list){
   /* para cada entrada em S.metas[key], encontra o vendedor e sua loja */
   const metasMes=S.metas[key]||{};
   Object.entries(metasMes).forEach(([chave, m])=>{
-    /* resolve o sellerId — chave pode ser sellerId ou sellerId_lojaId */
-    const sellerId=m.sellerId||chave.split('_')[0]+'_'+chave.split('_')[1];
-    const seller=S.sellers.find(s=>s.id===(m.sellerId||chave));
-    const sellerReal=seller||S.sellers.find(s=>chave.startsWith(s.id));
-    if(!sellerReal||sellerReal.ativo===false) return;
-    /* determina a loja: lojaId salvo tem prioridade */
-    const lojaId=m.lojaId||sellerReal.storeId;
+    const seller=S.sellers.find(s=>s.id===chave);
+    if(!seller||seller.ativo===false) return;
+    const lojaId=m.lojaId||seller.storeId;
     if(!lojaMap[lojaId]) return;
     lojaMap[lojaId].mV+=(m.mV||0);
     lojaMap[lojaId].mQ+=(m.mQ||0);
@@ -1945,16 +1907,12 @@ function confirmImport(){
       ? p._chave.replace(p.id+'_','')
       : (p.storeId||S.sellers.find(s=>s.id===p.id)?.storeId||null);
 
-    /* usa chave composta sellerId_lojaId para separar vendas por loja */
-    const chave = lojaId ? p.id+'_'+lojaId : p.id;
-
-    if(!S.metas[key][chave]) S.metas[key][chave]={mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-    S.metas[key][chave].rV    = p.rV;
-    S.metas[key][chave].rQ    = p.rQ;
-    S.metas[key][chave].rT    = p.rT  != null ? p.rT  : (S.metas[key][chave].rT||0);
-    S.metas[key][chave].rPA   = p.rPA != null ? p.rPA : (S.metas[key][chave].rPA||0);
-    S.metas[key][chave].lojaId= lojaId;
-    S.metas[key][chave].sellerId= p.id; /* guarda o sellerId para buscar meta e nome */
+    if(!S.metas[key][p.id]) S.metas[key][p.id]={mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
+    S.metas[key][p.id].rV  = p.rV;
+    S.metas[key][p.id].rQ  = p.rQ;
+    S.metas[key][p.id].rT  = p.rT  != null ? p.rT  : (S.metas[key][p.id].rT||0);
+    S.metas[key][p.id].rPA = p.rPA != null ? p.rPA : (S.metas[key][p.id].rPA||0);
+    S.metas[key][p.id].lojaId = lojaId;
   });
 
   /* extras (Venda Funcionário etc) — também substitui */
