@@ -939,32 +939,58 @@ function drawTabs() {
    ENRICH SELLERS
 ============================================================ */
 function getEnriched() {
-  let sellers;
-  if (S.store === 'all') {
-    sellers = S.sellers;
-  } else if (S.store === 'all-havaianas') {
-    const ids = S.stores.filter(s=>s.name.toLowerCase().includes('havaianas')).map(s=>s.id);
-    sellers = S.sellers.filter(s=>ids.includes(s.storeId));
-  } else if (S.store === 'all-hering') {
-    const ids = S.stores.filter(s=>s.name.toLowerCase().includes('hering')).map(s=>s.id);
-    sellers = S.sellers.filter(s=>ids.includes(s.storeId));
-  } else {
-    sellers = S.sellers.filter(s=>s.storeId===S.store);
-  }
-  sellers = sellers.filter(s=>s.ativo!==false);
-
   const key = S.month;
   const metasMes = S.metas[key]||{};
 
-  return sellers.map(s => {
-    const m = metasMes[s.id] || {mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-    /* usa a loja real onde vendeu (lojaId) ou a loja cadastrada */
-    const lojaId = m.lojaId || s.storeId;
-    const st = S.stores.find(x=>x.id===lojaId) || S.stores.find(x=>x.id===s.storeId);
-    const pV = m.mV>0 ? (m.rV/m.mV)*100 : 0;
-    const pQ = m.mQ>0 ? (m.rQ/m.mQ)*100 : 0;
-    return {...s,...m, storeId: lojaId, storeName: st?st.name:'', pV, pQ};
+  /* determina lojas no filtro atual */
+  let lojasFiltro = null;
+  if (S.store === 'all-havaianas') {
+    lojasFiltro = S.stores.filter(s=>cmpIsHav(s.name)).map(s=>s.id);
+  } else if (S.store === 'all-hering') {
+    lojasFiltro = S.stores.filter(s=>cmpIsHer(s.name)).map(s=>s.id);
+  } else if (S.store !== 'all') {
+    lojasFiltro = [S.store];
+  }
+
+  /* lojas permitidas do usuário */
+  const permitidas = currentUser?.lojas||['all'];
+  const lojasUsuario = permitidas[0]==='all' ? null : permitidas;
+
+  const resultado = [];
+
+  Object.entries(metasMes).forEach(([chave, m])=>{
+    /* extrai sellerId da chave (formato: sellerId_lojaId ou sellerId) */
+    const seller = S.sellers.find(s=>chave===s.id||chave.startsWith(s.id+'_'));
+    if(!seller||seller.ativo===false) return;
+
+    const lojaId = m.lojaId||seller.storeId;
+    const st = S.stores.find(x=>x.id===lojaId);
+    if(!st) return;
+
+    /* aplica filtros */
+    if(lojasFiltro && !lojasFiltro.includes(lojaId)) return;
+    if(lojasUsuario && !lojasUsuario.includes(lojaId)) return;
+
+    const pV = m.mV>0?(m.rV/m.mV)*100:0;
+    const pQ = m.mQ>0?(m.rQ/m.mQ)*100:0;
+    resultado.push({...seller,...m, storeId:lojaId, storeName:st.name, pV, pQ, _chaveCompleta:chave});
   });
+
+  /* adiciona vendedores sem nenhuma entrada mas com loja no filtro */
+  const chavasVistas = new Set(resultado.map(r=>r._chaveCompleta));
+  S.sellers.filter(s=>s.ativo!==false).forEach(s=>{
+    const lojaId = s.storeId;
+    const chave = s.id+'_'+lojaId;
+    const chaveSimples = s.id;
+    if(chavasVistas.has(chave)||chavasVistas.has(chaveSimples)) return;
+    if(lojasFiltro && !lojasFiltro.includes(lojaId)) return;
+    if(lojasUsuario && !lojasUsuario.includes(lojaId)) return;
+    const st = S.stores.find(x=>x.id===lojaId);
+    if(!st) return;
+    resultado.push({...s, mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0, storeName:st.name, pV:0, pQ:0});
+  });
+
+  return resultado;
 }
 
 /* ============================================================
@@ -1142,7 +1168,7 @@ function drawTableLojas(list){
   /* para cada entrada em S.metas[key], encontra o vendedor e sua loja */
   const metasMes=S.metas[key]||{};
   Object.entries(metasMes).forEach(([chave, m])=>{
-    const seller=S.sellers.find(s=>s.id===chave);
+    const seller=S.sellers.find(s=>chave===s.id||chave.startsWith(s.id+'_'));
     if(!seller||seller.ativo===false) return;
     const lojaId=m.lojaId||seller.storeId;
     if(!lojaMap[lojaId]) return;
@@ -1519,7 +1545,8 @@ function rMetas(){
   const sellers=storeFilter==='all' ? S.sellers : S.sellers.filter(s=>s.storeId===storeFilter);
   if(!sellers.length){el.innerHTML='<p style="font-size:13px;color:var(--text2)">Nenhum vendedor nesta loja.</p>';return;}
   el.innerHTML=sellers.map(s=>{
-    const m=S.metas[month][s.id]||{mV:0,mQ:0,rV:0,rQ:0};
+    const chave = s.id+'_'+s.storeId;
+    const m=S.metas[month][chave]||S.metas[month][s.id]||{mV:0,mQ:0,rV:0,rQ:0};
     const st=S.stores.find(x=>x.id===s.storeId);
     return `<div style="margin-bottom:8px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs)">
       <div style="font-weight:600;font-size:12px;margin-bottom:8px">${s.name} <span style="color:var(--text2);font-weight:400;font-size:11px">${st?st.name:''}</span></div>
@@ -1540,12 +1567,17 @@ function saveAdmin(){
     const mv=document.getElementById('mV_'+s.id);
     const mq=document.getElementById('mQ_'+s.id);
     if(mv){
-      const prev=S.metas[month][s.id]||{};
-      S.metas[month][s.id]={
+      const chave = s.id+'_'+s.storeId;
+      const prev=S.metas[month][chave]||S.metas[month][s.id]||{};
+      /* remove entrada antiga com chave simples */
+      if(S.metas[month][s.id]) delete S.metas[month][s.id];
+      S.metas[month][chave]={
         mV:parseFloat(mv.value)||0,
         mQ:parseFloat(mq.value)||0,
         rV:prev.rV||0,
-        rQ:prev.rQ||0
+        rQ:prev.rQ||0,
+        rT:prev.rT||0,
+        lojaId:s.storeId,
       };
     }
   });
@@ -1907,9 +1939,13 @@ function confirmImport(){
       ? p._chave.replace(p.id+'_','')
       : (p.storeId||S.sellers.find(s=>s.id===p.id)?.storeId||null);
 
+    /* chave única por vendedor+loja */
+    const chave = lojaId ? `${p.id}_${lojaId}` : p.id;
+
     /* preserva mV e mQ existentes — importação só atualiza realizados */
-    const existente = S.metas[key][p.id] || {mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-    S.metas[key][p.id] = {
+    const existente = S.metas[key][chave] || S.metas[key][p.id] || {mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
+
+    S.metas[key][chave] = {
       mV:  existente.mV  || 0,
       mQ:  existente.mQ  || 0,
       rV:  p.rV,
@@ -1918,6 +1954,11 @@ function confirmImport(){
       rPA: p.rPA != null ? p.rPA : (existente.rPA||0),
       lojaId: lojaId,
     };
+
+    /* remove entrada antiga com chave simples se existir */
+    if(lojaId && S.metas[key][p.id] && chave !== p.id){
+      delete S.metas[key][p.id];
+    }
   });
 
   /* extras (Venda Funcionário etc) — também substitui */
