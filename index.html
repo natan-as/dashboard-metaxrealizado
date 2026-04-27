@@ -1907,12 +1907,17 @@ function confirmImport(){
       ? p._chave.replace(p.id+'_','')
       : (p.storeId||S.sellers.find(s=>s.id===p.id)?.storeId||null);
 
-    if(!S.metas[key][p.id]) S.metas[key][p.id]={mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-    S.metas[key][p.id].rV  = p.rV;
-    S.metas[key][p.id].rQ  = p.rQ;
-    S.metas[key][p.id].rT  = p.rT  != null ? p.rT  : (S.metas[key][p.id].rT||0);
-    S.metas[key][p.id].rPA = p.rPA != null ? p.rPA : (S.metas[key][p.id].rPA||0);
-    S.metas[key][p.id].lojaId = lojaId;
+    /* preserva mV e mQ existentes — importação só atualiza realizados */
+    const existente = S.metas[key][p.id] || {mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
+    S.metas[key][p.id] = {
+      mV:  existente.mV  || 0,
+      mQ:  existente.mQ  || 0,
+      rV:  p.rV,
+      rQ:  p.rQ,
+      rT:  p.rT  != null ? p.rT  : (existente.rT||0),
+      rPA: p.rPA != null ? p.rPA : (existente.rPA||0),
+      lojaId: lojaId,
+    };
   });
 
   /* extras (Venda Funcionário etc) — também substitui */
