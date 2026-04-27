@@ -939,7 +939,6 @@ function drawTabs() {
    ENRICH SELLERS
 ============================================================ */
 function getEnriched() {
-  let lojas = storesFiltradas();
   let sellers;
   if (S.store === 'all') {
     sellers = S.sellers;
@@ -952,16 +951,54 @@ function getEnriched() {
   } else {
     sellers = S.sellers.filter(s=>s.storeId===S.store);
   }
-  /* remove vendedores inativos */
   sellers = sellers.filter(s=>s.ativo!==false);
+
   const key = S.month;
-  return sellers.map(s => {
-    const m = (S.metas[key]||{})[s.id] || {mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-    const st = S.stores.find(x=>x.id===s.storeId);
-    const pV = m.mV>0 ? (m.rV/m.mV)*100 : 0;
-    const pQ = m.mQ>0 ? (m.rQ/m.mQ)*100 : 0;
-    return {...s,...m, pV, pQ, storeName: st?st.name:''};
+  const metasMes = S.metas[key]||{};
+
+  /* constrói lista expandida: um item por combinação vendedor+loja */
+  const resultado = [];
+
+  /* primeiro coleta entradas com chave composta (sellerId_lojaId) */
+  const chavasCompostas = new Set();
+  Object.entries(metasMes).forEach(([chave, m])=>{
+    if(!m.sellerId) return; /* entrada antiga sem sellerId */
+    const seller = S.sellers.find(s=>s.id===m.sellerId);
+    if(!seller||seller.ativo===false) return;
+    const lojaId = m.lojaId||seller.storeId;
+    const st = S.stores.find(x=>x.id===lojaId);
+    if(!st) return;
+
+    /* verifica se esta loja está no filtro atual */
+    const lojaNoFiltro = S.store==='all' ||
+      (S.store==='all-havaianas'&&cmpIsHav(st.name)) ||
+      (S.store==='all-hering'&&cmpIsHer(st.name)) ||
+      S.store===lojaId;
+    if(!lojaNoFiltro) return;
+
+    const pV = m.mV>0?(m.rV/m.mV)*100:0;
+    const pQ = m.mQ>0?(m.rQ/m.mQ)*100:0;
+    resultado.push({...seller,...m,storeId:lojaId,storeName:st.name,pV,pQ,_chave:chave});
+    chavasCompostas.add(m.sellerId+'_'+lojaId);
   });
+
+  /* depois adiciona vendedores sem entrada importada (só com meta ou sem nada) */
+  sellers.forEach(s=>{
+    const lojaId = s.storeId;
+    const chaveSimples = s.id+'_'+lojaId;
+    if(chavasCompostas.has(chaveSimples)) return; /* já incluído acima */
+
+    /* tenta chave simples (dados antigos sem lojaId) */
+    const m = metasMes[s.id]||{mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
+    if(m.sellerId) return; /* já processado acima com chave composta */
+
+    const st = S.stores.find(x=>x.id===lojaId);
+    const pV = m.mV>0?(m.rV/m.mV)*100:0;
+    const pQ = m.mQ>0?(m.rQ/m.mQ)*100:0;
+    resultado.push({...s,...m,storeName:st?st.name:'',pV,pQ});
+  });
+
+  return resultado;
 }
 
 /* ============================================================
@@ -1138,12 +1175,14 @@ function drawTableLojas(list){
 
   /* para cada entrada em S.metas[key], encontra o vendedor e sua loja */
   const metasMes=S.metas[key]||{};
-  Object.entries(metasMes).forEach(([sellerId, m])=>{
-    /* encontra o vendedor cadastrado */
-    const seller=S.sellers.find(s=>s.id===sellerId);
-    if(!seller||seller.ativo===false) return;
-    /* determina a loja: lojaId salvo na importação ou storeId cadastrado */
-    const lojaId=m.lojaId||seller.storeId;
+  Object.entries(metasMes).forEach(([chave, m])=>{
+    /* resolve o sellerId — chave pode ser sellerId ou sellerId_lojaId */
+    const sellerId=m.sellerId||chave.split('_')[0]+'_'+chave.split('_')[1];
+    const seller=S.sellers.find(s=>s.id===(m.sellerId||chave));
+    const sellerReal=seller||S.sellers.find(s=>chave.startsWith(s.id));
+    if(!sellerReal||sellerReal.ativo===false) return;
+    /* determina a loja: lojaId salvo tem prioridade */
+    const lojaId=m.lojaId||sellerReal.storeId;
     if(!lojaMap[lojaId]) return;
     lojaMap[lojaId].mV+=(m.mV||0);
     lojaMap[lojaId].mQ+=(m.mQ||0);
@@ -1295,26 +1334,79 @@ function filtrarLojasMeta(){
 function rStores(){
   const el=document.getElementById('storeList');
   if(!S.stores.length){el.innerHTML='<p style="font-size:13px;color:var(--text2)">Nenhuma loja.</p>';return;}
-  el.innerHTML=S.stores.map(s=>{
+
+  const havLojas=S.stores.filter(s=>cmpIsHav(s.name));
+  const herLojas=S.stores.filter(s=>cmpIsHer(s.name));
+  const outras=S.stores.filter(s=>!cmpIsHav(s.name)&&!cmpIsHer(s.name));
+
+  function mkLoja(s){
     const isHav=cmpIsHav(s.name);
     const hcode=s.hcode||'';
-    return `<div class="tag" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--rs);background:var(--surface2);border:1px solid var(--border);margin-bottom:4px" id="stag_${s.id}">
-      <span style="font-weight:600;font-size:13px;flex:1">${s.name}</span>
-      ${isHav?`<div style="display:flex;align-items:center;gap:4px">
-        <span style="font-size:10px;color:var(--text2);white-space:nowrap">Código H:</span>
-        <input class="finp" value="${hcode}" placeholder="H000" maxlength="8"
-          style="width:70px;padding:3px 6px;font-size:12px;text-transform:uppercase"
-          onchange="saveHCode('${s.id}',this.value)"
-          oninput="this.value=this.value.toUpperCase()">
-      </div>`:''}
-      <button class="btn btn-ghost btn-sm" onclick="rmStore('${s.id}')">✕</button>
+    return `<div class="sitem" id="stag_${s.id}" style="padding:8px 12px">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${s.name}</div>
+        ${isHav&&hcode?`<div style="font-size:11px;color:var(--text2)">Código: ${hcode}</div>`:''}
+        ${isHav&&!hcode?`<div style="font-size:11px;color:var(--warn)">Sem código H</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="editStore('${s.id}')">✏️ Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="rmStore('${s.id}')">✕</button>
+      </div>
     </div>`;
-  }).join('');
+  }
+
+  function mkGrupo(titulo, lista){
+    if(!lista.length) return '';
+    return `<div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:6px;padding:0 2px">${titulo}</div>
+      ${lista.map(mkLoja).join('')}
+    </div>`;
+  }
+
+  el.innerHTML=
+    mkGrupo('Havaianas', havLojas)+
+    mkGrupo('Hering', herLojas)+
+    mkGrupo('Outras', outras);
 }
 
-function saveHCode(storeId, val){
-  const s=S.stores.find(x=>x.id===storeId);
-  if(s){ s.hcode=val.trim().toUpperCase(); save(); toast('Código H salvo!'); }
+function editStore(id){
+  const s=S.stores.find(x=>x.id===id);
+  if(!s) return;
+  const isHav=cmpIsHav(s.name);
+  const hcode=s.hcode||'';
+  document.getElementById('stag_'+id).outerHTML=`
+    <div class="sitem" id="stag_${id}" style="padding:8px 12px;flex-direction:column;align-items:stretch;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr ${isHav?'120px':''};gap:8px">
+        <div>
+          <label class="flbl" style="font-size:10px">Nome da loja</label>
+          <input class="finp" id="editStoreName_${id}" value="${s.name}">
+        </div>
+        ${isHav?`<div>
+          <label class="flbl" style="font-size:10px">Código H</label>
+          <input class="finp" id="editStoreHCode_${id}" value="${hcode}" placeholder="H000" maxlength="8"
+            style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        </div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="rStores()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" onclick="saveStore('${id}','${isHav}')">💾 Salvar</button>
+      </div>
+    </div>`;
+}
+
+function saveStore(id, isHav){
+  const s=S.stores.find(x=>x.id===id);
+  if(!s) return;
+  const nome=document.getElementById('editStoreName_'+id).value.trim();
+  if(!nome) return toast('Digite o nome','err');
+  s.name=nome;
+  if(isHav==='true'){
+    const hcode=document.getElementById('editStoreHCode_'+id)?.value.trim().toUpperCase()||'';
+    s.hcode=hcode;
+  }
+  save();
+  rStores();
+  toast('✅ Loja atualizada!');
 }
 
 function toggleHCodeField(){
@@ -1853,13 +1945,16 @@ function confirmImport(){
       ? p._chave.replace(p.id+'_','')
       : (p.storeId||S.sellers.find(s=>s.id===p.id)?.storeId||null);
 
-    /* SEMPRE substitui — o relatório já vem acumulado do mês inteiro */
-    if(!S.metas[key][p.id]) S.metas[key][p.id]={mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
-    S.metas[key][p.id].rV  = p.rV;
-    S.metas[key][p.id].rQ  = p.rQ;
-    S.metas[key][p.id].rT  = p.rT  != null ? p.rT  : (S.metas[key][p.id].rT||0);
-    S.metas[key][p.id].rPA = p.rPA != null ? p.rPA : (S.metas[key][p.id].rPA||0);
-    S.metas[key][p.id].lojaId = lojaId;
+    /* usa chave composta sellerId_lojaId para separar vendas por loja */
+    const chave = lojaId ? p.id+'_'+lojaId : p.id;
+
+    if(!S.metas[key][chave]) S.metas[key][chave]={mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
+    S.metas[key][chave].rV    = p.rV;
+    S.metas[key][chave].rQ    = p.rQ;
+    S.metas[key][chave].rT    = p.rT  != null ? p.rT  : (S.metas[key][chave].rT||0);
+    S.metas[key][chave].rPA   = p.rPA != null ? p.rPA : (S.metas[key][chave].rPA||0);
+    S.metas[key][chave].lojaId= lojaId;
+    S.metas[key][chave].sellerId= p.id; /* guarda o sellerId para buscar meta e nome */
   });
 
   /* extras (Venda Funcionário etc) — também substitui */
