@@ -571,12 +571,12 @@ td{padding:13px 14px;vertical-align:middle}
 
       <!-- METAS -->
       <div class="apanel" id="p-metas">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div class="fg">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:4px">
+          <div class="fg" style="min-width:160px;flex:1">
             <label class="flbl">Mês / Ano</label>
             <input type="month" class="finp" id="metaMonth">
           </div>
-          <div class="fg">
+          <div class="fg" style="min-width:130px;flex:1">
             <label class="flbl">Franquia</label>
             <select class="fsel" id="metaFranquia" onchange="filtrarLojasMeta()">
               <option value="all">Todas</option>
@@ -584,11 +584,16 @@ td{padding:13px 14px;vertical-align:middle}
               <option value="hering">Hering</option>
             </select>
           </div>
-          <div class="fg">
+          <div class="fg" style="min-width:160px;flex:1">
             <label class="flbl">Filtrar por Loja</label>
             <select class="fsel" id="metaStoreFilter" onchange="rMetas()">
               <option value="all">Todas as Lojas</option>
             </select>
+          </div>
+          <div style="width:100%;display:flex;justify-content:center;padding-top:4px">
+            <button class="btn btn-primary" onclick="abrirWizardMeta()" style="white-space:nowrap;height:38px;padding:0 32px">
+              Cadastrar Metas
+            </button>
           </div>
         </div>
         <hr class="divider">
@@ -602,6 +607,33 @@ td{padding:13px 14px;vertical-align:middle}
     <div class="mfoot">
       <button class="btn btn-ghost" onclick="closeM('adminModal')">Fechar</button>
       <button class="btn btn-primary" onclick="saveAdmin()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== WIZARD META MODAL ===== -->
+<div class="overlay" id="wizardMetaModal">
+  <div class="modal" style="max-width:560px">
+    <div class="mhd">
+      <div>
+        <span class="mtitle" id="wizardLojaTitle">Metas — Loja</span>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px" id="wizardProgresso"></div>
+      </div>
+      <button class="mclose" onclick="closeM('wizardMetaModal')">✕</button>
+    </div>
+    <div class="mbody">
+      <!-- Barra de progresso -->
+      <div style="background:var(--surface2);border-radius:20px;height:6px;margin-bottom:20px;overflow:hidden">
+        <div id="wizardProgressBar" style="height:100%;background:var(--accent1);border-radius:20px;transition:width .4s ease;width:0%"></div>
+      </div>
+      <div id="wizardBody"></div>
+    </div>
+    <div class="mfoot" style="justify-content:space-between">
+      <button class="btn btn-ghost" id="wizardBtnAnterior" onclick="wizardAnterior()" style="display:none">← Anterior</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-ghost" onclick="closeM('wizardMetaModal')">Cancelar</button>
+        <button class="btn btn-primary" id="wizardBtnProximo" onclick="wizardProximo()">Próxima Loja →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -781,32 +813,52 @@ function drawMonthTabs(){
   const label=document.getElementById('monthDropLabel');
   if(!list||!label) return;
 
-  /* coleta todos os meses que têm dados de meta ou realizado */
+  /* coleta todos os meses disponíveis */
   const meses=new Set();
   Object.keys(S.metas||{}).forEach(k=>{ if(/^\d{4}-\d{2}$/.test(k)) meses.add(k); });
   meses.add(new Date().toISOString().slice(0,7));
   if(S.month) meses.add(S.month);
+  (S.mesesSel||[]).forEach(m=>meses.add(m));
 
   const lista=[...meses].sort();
 
+  /* garante que mesesSel está inicializado */
+  if(!S.mesesSel||!S.mesesSel.length) S.mesesSel=[S.month||lista[lista.length-1]];
+
   list.innerHTML='';
   lista.forEach(m=>{
-    const ativo=m===S.month;
+    const ativo=S.mesesSel.includes(m);
     const item=document.createElement('div');
     item.className='mes-dropdown-item'+(ativo?' checked':'');
     item.innerHTML=`<span class="mes-check">${ativo?'✓':''}</span>${mLabel(m)}`;
     item.onclick=(e)=>{
       e.stopPropagation();
-      S.month=m;
+      if(!S.mesesSel) S.mesesSel=[];
+      if(ativo){
+        /* não permite desmarcar o último */
+        if(S.mesesSel.length===1) return;
+        S.mesesSel=S.mesesSel.filter(x=>x!==m);
+      } else {
+        S.mesesSel=[...S.mesesSel,m].sort();
+      }
+      /* mantém S.month como o mais recente para compatibilidade */
+      S.month=S.mesesSel[S.mesesSel.length-1];
       save();
       draw();
-      list.classList.remove('open');
+      /* mantém dropdown aberto para multi-seleção */
+      drawMonthTabs();
     };
     list.appendChild(item);
   });
 
-  /* atualiza label do botão */
-  label.textContent=S.month?mLabel(S.month):'Selecionar mês';
+  /* atualiza label */
+  if(!S.mesesSel||!S.mesesSel.length){
+    label.textContent='Selecionar mês';
+  } else if(S.mesesSel.length===1){
+    label.textContent=mLabel(S.mesesSel[0]);
+  } else {
+    label.textContent=`${S.mesesSel.length} meses selecionados`;
+  }
 }
 
 /* ============================================================
@@ -867,7 +919,10 @@ const closeM = id => document.getElementById(id).classList.remove('open');
 
 /* close on backdrop click */
 document.querySelectorAll('.overlay').forEach(o =>
-  o.addEventListener('click', e => { if (e.target===o) o.classList.remove('open'); })
+  o.addEventListener('click', e => {
+    const noClose = ['wizardMetaModal','adminModal'];
+    if (e.target===o && !noClose.includes(o.id)) o.classList.remove('open');
+  })
 );
 
 /* ============================================================
@@ -939,8 +994,7 @@ function drawTabs() {
    ENRICH SELLERS
 ============================================================ */
 function getEnriched() {
-  const key = S.month;
-  const metasMes = S.metas[key]||{};
+  const mesesSel = S.mesesSel&&S.mesesSel.length ? S.mesesSel : [S.month];
 
   /* determina lojas no filtro atual */
   let lojasFiltro = null;
@@ -952,31 +1006,41 @@ function getEnriched() {
     lojasFiltro = [S.store];
   }
 
-  /* lojas permitidas do usuário */
   const permitidas = currentUser?.lojas||['all'];
   const lojasUsuario = permitidas[0]==='all' ? null : permitidas;
 
-  const resultado = [];
+  /* acumula dados de todos os meses selecionados por chave */
+  const acumulado = {};
 
-  Object.entries(metasMes).forEach(([chave, m])=>{
-    /* extrai sellerId da chave (formato: sellerId_lojaId ou sellerId) */
-    const seller = S.sellers.find(s=>chave===s.id||chave.startsWith(s.id+'_'));
-    if(!seller||seller.ativo===false) return;
-
-    const lojaId = m.lojaId||seller.storeId;
-    const st = S.stores.find(x=>x.id===lojaId);
-    if(!st) return;
-
-    /* aplica filtros */
-    if(lojasFiltro && !lojasFiltro.includes(lojaId)) return;
-    if(lojasUsuario && !lojasUsuario.includes(lojaId)) return;
-
-    const pV = m.mV>0?(m.rV/m.mV)*100:0;
-    const pQ = m.mQ>0?(m.rQ/m.mQ)*100:0;
-    resultado.push({...seller,...m, storeId:lojaId, storeName:st.name, pV, pQ, _chaveCompleta:chave});
+  mesesSel.forEach(key=>{
+    const metasMes = S.metas[key]||{};
+    Object.entries(metasMes).forEach(([chave, m])=>{
+      const seller = S.sellers.find(s=>chave===s.id||chave.startsWith(s.id+'_'));
+      if(!seller||seller.ativo===false) return;
+      const lojaId = m.lojaId||seller.storeId;
+      const st = S.stores.find(x=>x.id===lojaId);
+      if(!st) return;
+      if(lojasFiltro && !lojasFiltro.includes(lojaId)) return;
+      if(lojasUsuario && !lojasUsuario.includes(lojaId)) return;
+      if(!acumulado[chave]){
+        acumulado[chave]={seller,lojaId,st,mV:0,mQ:0,rV:0,rQ:0,rT:0,rPA:0};
+      }
+      acumulado[chave].mV+=(m.mV||0);
+      acumulado[chave].mQ+=(m.mQ||0);
+      acumulado[chave].rV+=(m.rV||0);
+      acumulado[chave].rQ+=(m.rQ||0);
+      acumulado[chave].rT+=(m.rT||0);
+    });
   });
 
-  /* adiciona vendedores sem nenhuma entrada mas com loja no filtro */
+  const resultado = Object.entries(acumulado).map(([chave,a])=>{
+    const pV = a.mV>0?(a.rV/a.mV)*100:0;
+    const pQ = a.mQ>0?(a.rQ/a.mQ)*100:0;
+    return {...a.seller, mV:a.mV, mQ:a.mQ, rV:a.rV, rQ:a.rQ, rT:a.rT, rPA:a.rPA,
+      storeId:a.lojaId, storeName:a.st.name, pV, pQ, _chaveCompleta:chave};
+  });
+
+  /* adiciona vendedores sem nenhuma entrada mas dentro do filtro */
   const chavasVistas = new Set(resultado.map(r=>r._chaveCompleta));
   S.sellers.filter(s=>s.ativo!==false).forEach(s=>{
     const lojaId = s.storeId;
@@ -997,7 +1061,9 @@ function getEnriched() {
    DASHBOARD
 ============================================================ */
 function drawDash() {
-  document.getElementById('mmonth').textContent = mLabel(S.month);
+  const mesesSel = S.mesesSel&&S.mesesSel.length ? S.mesesSel : [S.month];
+  const mesLabel = mesesSel.length===1 ? mLabel(mesesSel[0]) : `${mesesSel.length} meses`;
+  document.getElementById('mmonth').textContent = mesLabel;
 
   if (!S.stores.length) {
     document.getElementById('cards').innerHTML='';
@@ -1033,7 +1099,7 @@ function drawDash() {
   const pa = totRT>0?(totRQ/totRT):0;
 
   document.getElementById('cards').innerHTML=`
-    <div class="card"><div class="clabel">Meta Valor</div><div class="cval">${brl(totMV)}</div><div class="csub">${mLabel(S.month)}</div></div>
+    <div class="card"><div class="clabel">Meta Valor</div><div class="cval">${brl(totMV)}</div><div class="csub">${mesLabel}</div></div>
     <div class="card c-blue"><div class="clabel">Realizado Líquido</div><div class="cval">${brl(totRV)}</div><div class="csub">${pctV.toFixed(1)}% da meta</div></div>
     <div class="card ${pctV>=100?'':'c-warn'}"><div class="clabel">Progresso Geral</div><div class="cval">${pctV.toFixed(1)}%</div><div class="csub">Falta ${brl(Math.max(0,totMV-totRV))}</div></div>
     <div class="card c-blue"><div class="clabel">Itens Vendidos</div><div class="cval">${totRQ.toLocaleString('pt-BR')}</div><div class="csub">Meta: ${totMQ.toLocaleString('pt-BR')} itens</div></div>
@@ -1165,28 +1231,33 @@ function drawTableLojas(list){
   const lojaMap={};
   lojas.forEach(s=>{ lojaMap[s.id]={id:s.id,name:s.name,mV:0,mQ:0,rV:0,rQ:0,rT:0}; });
 
-  /* para cada entrada em S.metas[key], encontra o vendedor e sua loja */
-  const metasMes=S.metas[key]||{};
-  Object.entries(metasMes).forEach(([chave, m])=>{
-    const seller=S.sellers.find(s=>chave===s.id||chave.startsWith(s.id+'_'));
-    if(!seller||seller.ativo===false) return;
-    const lojaId=m.lojaId||seller.storeId;
-    if(!lojaMap[lojaId]) return;
-    lojaMap[lojaId].mV+=(m.mV||0);
-    lojaMap[lojaId].mQ+=(m.mQ||0);
-    lojaMap[lojaId].rV+=(m.rV||0);
-    lojaMap[lojaId].rQ+=(m.rQ||0);
-    lojaMap[lojaId].rT+=(m.rT||0);
+  /* acumula metas e realizados de todos os meses selecionados */
+  const mesesSel = S.mesesSel&&S.mesesSel.length ? S.mesesSel : [key];
+  mesesSel.forEach(mes=>{
+    const metasMes=S.metas[mes]||{};
+    Object.entries(metasMes).forEach(([chave, m])=>{
+      const seller=S.sellers.find(s=>chave===s.id||chave.startsWith(s.id+'_'));
+      if(!seller||seller.ativo===false) return;
+      const lojaId=m.lojaId||seller.storeId;
+      if(!lojaMap[lojaId]) return;
+      lojaMap[lojaId].mV+=(m.mV||0);
+      lojaMap[lojaId].mQ+=(m.mQ||0);
+      lojaMap[lojaId].rV+=(m.rV||0);
+      lojaMap[lojaId].rQ+=(m.rQ||0);
+      lojaMap[lojaId].rT+=(m.rT||0);
+    });
   });
 
-  /* inclui extras de loja (Venda Funcionário etc) */
-  const extras=(S.extrasLoja||{})[key]||{};
-  Object.entries(extras).forEach(([lojaId,ex])=>{
-    if(lojaMap[lojaId]){
-      lojaMap[lojaId].rV+=ex.rV||0;
-      lojaMap[lojaId].rQ+=ex.rQ||0;
-      lojaMap[lojaId].rT+=ex.rT||0;
-    }
+  /* inclui extras de loja (Venda Funcionário etc) de todos os meses */
+  mesesSel.forEach(mes=>{
+    const extras=(S.extrasLoja||{})[mes]||{};
+    Object.entries(extras).forEach(([lojaId,ex])=>{
+      if(lojaMap[lojaId]){
+        lojaMap[lojaId].rV+=ex.rV||0;
+        lojaMap[lojaId].rQ+=ex.rQ||0;
+        lojaMap[lojaId].rT+=ex.rT||0;
+      }
+    });
   });
 
   let lojasArr=Object.values(lojaMap);
@@ -3075,6 +3146,138 @@ function salvarUsuario(){
   closeM('userModal');
   renderUsersTable();
   toast('✅ Usuário salvo!');
+}
+
+/* ============================================================
+   WIZARD DE METAS — preenche loja por loja
+============================================================ */
+let wizardLojas   = [];
+let wizardIdx     = 0;
+let wizardMonth   = '';
+let wizardRascunho = {}; /* armazena valores digitados antes de confirmar */
+
+function abrirWizardMeta(){
+  const month = document.getElementById('metaMonth').value || S.month;
+  if(!month) return toast('Selecione o mês primeiro','err');
+  wizardMonth = month;
+
+  /* monta lista de lojas que têm vendedores ativos */
+  wizardLojas = S.stores.filter(st=>{
+    return S.sellers.some(s=>s.storeId===st.id&&s.ativo!==false);
+  });
+
+  if(!wizardLojas.length) return toast('Nenhuma loja com vendedores cadastrados','err');
+
+  wizardIdx = 0;
+  wizardRascunho = {};
+  closeM('adminModal');
+  wizardRenderLoja();
+  document.getElementById('wizardMetaModal').classList.add('open');
+}
+
+function wizardRenderLoja(){
+  const loja  = wizardLojas[wizardIdx];
+  const total = wizardLojas.length;
+  if(!S.metas[wizardMonth]) S.metas[wizardMonth]={};
+
+  /* atualiza cabeçalho */
+  document.getElementById('wizardLojaTitle').textContent = loja.name;
+  document.getElementById('wizardProgresso').textContent =
+    `Loja ${wizardIdx+1} de ${total}`;
+
+  /* barra de progresso */
+  const pct = ((wizardIdx)/total)*100;
+  document.getElementById('wizardProgressBar').style.width = pct+'%';
+
+  /* botão anterior */
+  document.getElementById('wizardBtnAnterior').style.display = wizardIdx>0?'':'none';
+
+  /* botão próximo / confirmar */
+  const btnProx = document.getElementById('wizardBtnProximo');
+  btnProx.textContent = wizardIdx===total-1 ? '✅ Confirmar e Salvar' : 'Próxima Loja →';
+
+  /* vendedores desta loja */
+  const sellers = S.sellers.filter(s=>s.storeId===loja.id&&s.ativo!==false);
+
+  const body = document.getElementById('wizardBody');
+  body.innerHTML = sellers.map(s=>{
+    const chave  = s.id+'_'+s.storeId;
+    const mExist = S.metas[wizardMonth][chave]||S.metas[wizardMonth][s.id]||{mV:0,mQ:0};
+    /* usa rascunho se já foi digitado */
+    const mVval  = wizardRascunho[chave]?.mV ?? (mExist.mV||0);
+    const mQval  = wizardRascunho[chave]?.mQ ?? (mExist.mQ||0);
+    return `<div style="display:grid;grid-template-columns:1fr 160px 120px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:600;font-size:13px">${s.name}</div>
+      </div>
+      <div>
+        <label class="flbl" style="font-size:10px">Meta R$</label>
+        <input type="text" inputmode="decimal" class="finp" id="wmV_${s.id}"
+          value="${mVval > 0 ? mVval.toFixed(2).replace('.',',') : ''}"
+          placeholder="0,00"
+          style="text-align:right"
+          onkeypress="return /[0-9.,]/.test(event.key)"
+          onblur="this.value=this.value.replace('.',',')">
+      </div>
+      <div>
+        <label class="flbl" style="font-size:10px">Meta Qtd</label>
+        <input type="number" class="finp" id="wmQ_${s.id}" value="${mQval||''}" min="0"
+          style="text-align:right" placeholder="0">
+      </div>
+    </div>`;
+  }).join('');
+
+  if(!sellers.length){
+    body.innerHTML='<p style="color:var(--text2);font-size:13px;text-align:center;padding:20px">Nenhum vendedor ativo nesta loja.</p>';
+  }
+}
+
+function wizardSalvarLojaAtual(){
+  /* salva valores da loja atual no rascunho e no S.metas */
+  const loja = wizardLojas[wizardIdx];
+  const sellers = S.sellers.filter(s=>s.storeId===loja.id&&s.ativo!==false);
+  if(!S.metas[wizardMonth]) S.metas[wizardMonth]={};
+
+  sellers.forEach(s=>{
+    const chave = s.id+'_'+s.storeId;
+    const mvEl  = document.getElementById('wmV_'+s.id);
+    const mqEl  = document.getElementById('wmQ_'+s.id);
+    if(!mvEl) return;
+    const mV = parseFloat((mvEl.value||'0').replace(/\./g,'').replace(',','.'))||0;
+    const mQ = parseFloat(mqEl.value)||0;
+    wizardRascunho[chave] = {mV, mQ};
+    const prev = S.metas[wizardMonth][chave]||S.metas[wizardMonth][s.id]||{};
+    if(S.metas[wizardMonth][s.id]) delete S.metas[wizardMonth][s.id];
+    S.metas[wizardMonth][chave] = {
+      mV, mQ,
+      rV:  prev.rV  ||0,
+      rQ:  prev.rQ  ||0,
+      rT:  prev.rT  ||0,
+      lojaId: s.storeId,
+    };
+  });
+}
+
+function wizardProximo(){
+  wizardSalvarLojaAtual();
+  if(wizardIdx < wizardLojas.length-1){
+    wizardIdx++;
+    wizardRenderLoja();
+  } else {
+    /* última loja — salva tudo */
+    S.month = wizardMonth;
+    save();
+    closeM('wizardMetaModal');
+    draw();
+    drawMonthTabs();
+    toast('✅ Metas salvas para todas as lojas!');
+  }
+}
+
+function wizardAnterior(){
+  wizardSalvarLojaAtual();
+  wizardIdx--;
+  wizardRenderLoja();
 }
 
 init();
