@@ -2141,12 +2141,6 @@ async function hashSenha(senha){
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-/* Hashes pré-calculados dos usuários padrão
-   admin123  → hash abaixo
-   hav2024   → hash abaixo
-   her2024   → hash abaixo
-   cd2024    → hash abaixo */
-const USERS_DEFAULT = [
 const USERS_DEFAULT = [
   { id:'u_admin',     user:'admin',     pass:'240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', nome:'Admin',     grupo:'admin',     lojas:['all'] },
   { id:'u_havaianas', user:'havaianas', pass:'4b85f4228b08cb4ce1d82de2b5b009e5aa2e39e32b52f62a286d14a8ce43109a', nome:'Havaianas', grupo:'havaianas', lojas:['all'] },
