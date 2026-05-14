@@ -2131,11 +2131,27 @@ function atualizarDataHeader(){
    Cada usuário: { id, user, pass, nome, grupo, lojas }
    lojas: ['all'] = todas, ou array de store IDs
 ============================================================ */
+/* ============================================================
+   HASH DE SENHA — SHA-256 via Web Crypto API
+   As senhas nunca ficam em texto puro no código
+============================================================ */
+async function hashSenha(senha){
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest('SHA-256', enc.encode(senha));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+/* Hashes pré-calculados dos usuários padrão
+   admin123  → hash abaixo
+   hav2024   → hash abaixo
+   her2024   → hash abaixo
+   cd2024    → hash abaixo */
 const USERS_DEFAULT = [
-  { id:'u_admin',     user:'admin',     pass:'admin123', nome:'Admin',     grupo:'admin',     lojas:['all'] },
-  { id:'u_havaianas', user:'havaianas', pass:'hav2024',  nome:'Havaianas', grupo:'havaianas', lojas:['all'] },
-  { id:'u_hering',    user:'hering',    pass:'her2024',  nome:'Hering',    grupo:'hering',    lojas:['all'] },
-  { id:'u_cd',        user:'cd',        pass:'cd2024',   nome:'CD',        grupo:'cd',        lojas:['all'] },
+const USERS_DEFAULT = [
+  { id:'u_admin',     user:'admin',     pass:'240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', nome:'Admin',     grupo:'admin',     lojas:['all'] },
+  { id:'u_havaianas', user:'havaianas', pass:'4b85f4228b08cb4ce1d82de2b5b009e5aa2e39e32b52f62a286d14a8ce43109a', nome:'Havaianas', grupo:'havaianas', lojas:['all'] },
+  { id:'u_hering',    user:'hering',    pass:'1ef55abc5b6aafc4a559ba42766513035eb6e0cd0de13f4148cfb19db6b41f5e', nome:'Hering',    grupo:'hering',    lojas:['all'] },
+  { id:'u_cd',        user:'cd',        pass:'229e8caea68f8a7ae988766690c09d7cc651154e1c9d6e338eb368c526acd48b', nome:'CD',        grupo:'cd',        lojas:['all'] },
 ];
 
 function loadUsers(){
@@ -2168,11 +2184,12 @@ function toggleSenhaVisivel(){
   }
 }
 
-function doLogin() {
+async function doLogin() {
   USERS = loadUsers();
   const u = document.getElementById('loginUser').value.trim().toLowerCase();
   const p = document.getElementById('loginPass').value;
-  const found = USERS.find(x => x.user === u && x.pass === p);
+  const hashed = await hashSenha(p);
+  const found = USERS.find(x => x.user === u && x.pass === hashed);
   if (!found) {
     document.getElementById('loginErr').textContent = '❌ Usuário ou senha incorretos.';
     document.getElementById('loginPass').value = '';
@@ -3178,7 +3195,7 @@ function renderLojasUsuario(selecionadas){
 function toggleLojaAll(){}
 function atualizarLojaAll(){}
 
-function salvarUsuario(){
+async function salvarUsuario(){
   const id=document.getElementById('editUserId').value;
   const user=document.getElementById('uLogin').value.trim().toLowerCase();
   const pass=document.getElementById('uPass').value;
@@ -3190,11 +3207,9 @@ function salvarUsuario(){
 
   let users=loadUsers();
 
-  /* valida login único */
   const duplicado=users.find(u=>u.user===user&&u.id!==id);
   if(duplicado) return toast('Este login já existe','err');
 
-  /* coleta lojas selecionadas */
   let lojas=['all'];
   const listEl=document.getElementById('lojasUsuarioList');
   if(listEl&&listEl.dataset.sel&&grupo!=='admin'){
@@ -3207,12 +3222,12 @@ function salvarUsuario(){
     const u=users.find(x=>x.id===id);
     if(!u) return;
     u.user=user; u.nome=nome; u.grupo=grupo; u.lojas=lojas;
-    if(pass) u.pass=pass;
-    /* atualiza sessão se for o próprio usuário */
+    if(pass) u.pass=await hashSenha(pass);
     if(currentUser&&currentUser.id===id){ currentUser={...u}; sessionStorage.setItem('m360user',JSON.stringify(currentUser)); }
   } else {
     if(!pass) return toast('Digite a senha','err');
-    users.push({id:'u_'+Date.now(),user,pass,nome,grupo,lojas});
+    const passHash=await hashSenha(pass);
+    users.push({id:'u_'+Date.now(),user,pass:passHash,nome,grupo,lojas});
   }
 
   saveUsers(users);
