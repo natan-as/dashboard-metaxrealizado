@@ -841,6 +841,8 @@ function init() {
         const { cmpData: cd, cmpFiles: cf, usuarios: usr, ...metaDados } = dados;
         S = metaDados;
         if (cd) { cmpData = cd; cmpFiles = cf || {1:[],2:[]}; }
+        /* garante dados fixos mesmo após carregar dados.json */
+        aplicarDadosFixos();
         /* carrega usuários do JSON — tem prioridade sobre localStorage */
         if (usr && usr.length) {
           /* verifica se as senhas já estão hasheadas (64 chars hex) */
@@ -2319,11 +2321,58 @@ let cmpActiveStore = 'all'; // 'all','all-hav','all-her', ou nome loja
 let cmpActiveGrupo = 'all'; // 'all','havaianas','hering'
 
 function cmpSave(){ try{ localStorage.setItem('cmp360', JSON.stringify({data:cmpData,files:cmpFiles})); }catch(e){} }
+/* ============================================================
+   DADOS FIXOS — Janeiro 2025 Hering Estação e Pantanal
+   Esses dados são carregados sempre, independente do dados.json
+============================================================ */
+const DADOS_FIXOS = {
+  '1': {
+    'Hering Estação': {
+      "02/01/2025":16850.44,"03/01/2025":17066.57,"04/01/2025":18698.29,
+      "05/01/2025":11337.98,"06/01/2025":12858.57,"07/01/2025":13662.57,
+      "08/01/2025":15939.89,"09/01/2025":16410.33,"10/01/2025":17205.40,
+      "11/01/2025":24662.52,"12/01/2025":14806.44,"13/01/2025":11933.03,
+      "14/01/2025":15766.51,"15/01/2025":11278.77,"16/01/2025":12210.76,
+      "17/01/2025":14757.90,"18/01/2025":25773.50,"19/01/2025":16042.87,
+      "20/01/2025":15492.50,"21/01/2025":11591.86,"22/01/2025":12033.20,
+      "23/01/2025":12934.77,"24/01/2025":12444.74,"25/01/2025":30479.08,
+      "26/01/2025":8343.29, "27/01/2025":12430.92,"28/01/2025":13168.69,
+      "29/01/2025":14928.69,"30/01/2025":13289.85,"31/01/2025":14855.77,
+    },
+    'Hering Pantanal': {
+      "02/01/2025":14600.66,"03/01/2025":13432.93,"04/01/2025":15689.62,
+      "05/01/2025":7239.31, "06/01/2025":10404.24,"07/01/2025":9444.99,
+      "08/01/2025":16818.57,"09/01/2025":12338.89,"10/01/2025":9233.07,
+      "11/01/2025":15268.10,"12/01/2025":11961.23,"13/01/2025":11888.71,
+      "14/01/2025":13674.57,"15/01/2025":9368.09, "16/01/2025":11418.85,
+      "17/01/2025":11007.88,"18/01/2025":23100.53,"19/01/2025":15099.60,
+      "20/01/2025":7235.32, "21/01/2025":10145.23,"22/01/2025":19485.42,
+      "23/01/2025":8828.19, "24/01/2025":10275.24,"25/01/2025":17806.51,
+      "26/01/2025":9345.08, "27/01/2025":9253.18, "28/01/2025":9535.11,
+      "29/01/2025":10665.07,"30/01/2025":10151.07,"31/01/2025":8181.29,
+    },
+  }
+};
+
+function aplicarDadosFixos(){
+  Object.entries(DADOS_FIXOS).forEach(([periodo, lojas])=>{
+    if(!cmpData[periodo]) cmpData[periodo]={};
+    Object.entries(lojas).forEach(([loja, dias])=>{
+      if(!cmpData[periodo][loja]) cmpData[periodo][loja]={};
+      Object.entries(dias).forEach(([data, valor])=>{
+        cmpData[periodo][loja][data]=valor;
+      });
+    });
+  });
+}
+
 function cmpLoad(){
   try{
     const raw=localStorage.getItem('cmp360');
-    if(raw){ const d=JSON.parse(raw); cmpData=d.data||{1:{},2:{}}; cmpFiles=d.files||{1:[],2:[]}; }
+    if(raw){ const d=JSON.parse(raw); cmpData=d.data||{1:{},2:{}}; cmpFiles=d.files||{1:[],2:{}}; }
   }catch(e){}
+  /* aplica dados fixos sempre — nunca deixa zerar */
+  aplicarDadosFixos();
 }
 
 // Setup drag-and-drop after DOM ready
