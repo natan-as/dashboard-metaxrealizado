@@ -2188,8 +2188,14 @@ async function doLogin() {
   USERS = loadUsers();
   const u = document.getElementById('loginUser').value.trim().toLowerCase();
   const p = document.getElementById('loginPass').value;
+  if(!u||!p){ document.getElementById('loginErr').textContent='❌ Preencha usuário e senha.'; return; }
+
   const hashed = await hashSenha(p);
-  const found = USERS.find(x => x.user === u && x.pass === hashed);
+
+  /* aceita hash SHA-256 OU senha em texto puro (compatibilidade) */
+  const found = USERS.find(x =>
+    x.user === u && (x.pass === hashed || x.pass === p)
+  );
   if (!found) {
     document.getElementById('loginErr').textContent = '❌ Usuário ou senha incorretos.';
     document.getElementById('loginPass').value = '';
