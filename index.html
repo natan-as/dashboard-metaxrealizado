@@ -843,8 +843,18 @@ function init() {
         if (cd) { cmpData = cd; cmpFiles = cf || {1:[],2:[]}; }
         /* carrega usuários do JSON — tem prioridade sobre localStorage */
         if (usr && usr.length) {
-          saveUsers(usr);
-          USERS = usr;
+          /* verifica se as senhas já estão hasheadas (64 chars hex) */
+          const jaHasheados = usr.every(u => u.pass && u.pass.length === 64 && /^[0-9a-f]+$/.test(u.pass));
+          if (jaHasheados) {
+            saveUsers(usr);
+            USERS = usr;
+          } else {
+            /* senhas em texto puro — carrega mas não sobrescreve se localStorage já tem hash */
+            const local = loadUsers();
+            const localHasheado = local.every(u => u.pass && u.pass.length === 64);
+            if (!localHasheado) { saveUsers(usr); USERS = usr; }
+            else { USERS = local; }
+          }
         }
         localStorage.setItem('m360', JSON.stringify(S));
         cmpSave();
