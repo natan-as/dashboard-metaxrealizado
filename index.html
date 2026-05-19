@@ -2463,44 +2463,51 @@ function cmpHandleFileModal(event){
           '51.138.625/0003-17':'Hering Pantanal',
           '58.592.898/0001-14':'Hering Lucas do Rio Verde',
         };
+        const iLoja=ci('Loja');
         const iData=ci('Data');
         const iCNPJ=hdrs.findIndex(h=>h.includes('CNPJ'));
         const iEmpresa=hdrs.findIndex(h=>h==='Empresa'||h==='Razão Social');
-        /* Hering sintético: Valor Líquido (R$) | Havaianas: Vlr Líquido */
+        /* Hering sintético: Valor Líquido (R$) | Havaianas por item: Vlr Líquido */
         const iLiq=tipo==='hering'
           ?hdrs.findIndex(h=>h.includes('Valor Líquido')||h.includes('Valor Liquido'))
           :hdrs.findIndex(h=>h==='Vlr Líquido'||h==='Vlr Liquido'||(h.includes('Vlr')&&h.includes('quido')));
 
-        const lojaTotal={};
+        /* mapa hcode → nome da loja cadastrada */
+        const hcodeMap={};
+        S.stores.forEach(s=>{ if(s.hcode) hcodeMap[s.hcode.toUpperCase()]=s.name; });
+
+        /* para Havaianas por item: agrupa por loja+data para obter evolução diária */
+        const lojaData={}; /* lojaKey → { data → valor } */
         rows.slice(hi+1).forEach(row=>{
           const dataStr=String(row[iData]||'').trim();
           if(!dataStr) return;
           const rawLiq=row[iLiq];
           const liq=typeof rawLiq==='number'?rawLiq:parseFloat(String(rawLiq).replace(',','.'));
-          if(isNaN(liq)) return;
+          if(isNaN(liq)||liq===0) return;
           let lojaKey='';
           if(tipo==='havaianas'){
-            const cnpj=iCNPJ>=0?String(row[iCNPJ]||'').trim():'';
-            const empresa=iEmpresa>=0?String(row[iEmpresa]||'').trim():(String(row[1]||'').trim());
-            lojaKey=CNPJ_MAP[cnpj]||'';
-            if(!lojaKey){
-              const lojaCad=S.stores.find(s=>{
-                const nm=s.name.toLowerCase();
-                return empresa&&(nm.includes(empresa.toLowerCase().split(' ')[0])||
-                                 empresa.toLowerCase().includes(nm.split(' ')[0]));
-              });
-              lojaKey=lojaCad?lojaCad.name:(empresa||'Havaianas');
-            }
+            /* pega o código H da coluna Loja */
+            const lojaRaw=iLoja>=0?String(row[iLoja]||'').trim():String(row[0]||'').trim();
+            const hcode=(lojaRaw.match(/^(H\d+)/i)||[])[1]?.toUpperCase()||'';
+            lojaKey=hcodeMap[hcode]||lojaRaw;
           } else if(tipo==='hering'){
-            /* formato sintético Hering: identifica loja pelo CNPJ */
             const cnpjFull=iCNPJ>=0?String(row[iCNPJ]||'').trim():'';
-            lojaKey=CNPJ_MAP[cnpjFull]||CNPJ_MAP[cnpjFull.replace(/\./g,'').replace(/\//g,'/')]||String(row[0]||'').trim();
+            lojaKey=CNPJ_MAP[cnpjFull]||String(row[0]||'').trim();
           } else {
             lojaKey=String(row[1]||'').trim()||'Havaianas';
           }
-          if(!lojaTotal[lojaKey]) lojaTotal[lojaKey]={rV:0,dias:new Set()};
-          lojaTotal[lojaKey].rV+=liq;
-          lojaTotal[lojaKey].dias.add(dataStr.slice(3,10)); /* MM/AAAA */
+          if(!lojaKey) return;
+          if(!lojaData[lojaKey]) lojaData[lojaKey]={};
+          if(!lojaData[lojaKey][dataStr]) lojaData[lojaKey][dataStr]=0;
+          lojaData[lojaKey][dataStr]+=liq;
+        });
+
+        /* converte para o formato cmpPending */
+        const lojaTotal={};
+        Object.entries(lojaData).forEach(([loja,dias])=>{
+          const rV=Object.values(dias).reduce((s,v)=>s+v,0);
+          const mesesSet=new Set(Object.keys(dias).map(d=>d.slice(3,10)));
+          lojaTotal[loja]={rV,dias:mesesSet};
         });
 
         Object.entries(lojaTotal).forEach(([loja,v])=>{
@@ -2570,78 +2577,69 @@ function cmpReadFile(file,periodo){
       let tipo='',hi=-1;
       for(let i=0;i<Math.min(rows.length,8);i++){
         const r=rows[i].map(c=>String(c).trim());
-        if(r[0]==='Loja'&&r[1]==='Data'&&r[2]==='Dia'){hi=i;tipo='hering';break;}
-        if(r[0]==='Data'&&r.some(c=>c.includes('CNPJ'))){hi=i;tipo='havaianas';break;}
+        if(r[0]==='Loja'&&r[1]==='Data'&&r[2]==='Dia'){hi=i;tipo='havaianas';break;}
+        if(r[0]==='Data'&&r.some(c=>c.includes('CNPJ'))){hi=i;tipo='hering';break;}
       }
       if(!tipo){toast('Formato não reconhecido: '+file.name,'err');return;}
       const hdrs=rows[hi].map(c=>String(c).trim());
       const ci=n=>hdrs.findIndex(h=>h===n);
 
-      /* CNPJ completo → nome da loja Hering */
       const CNPJ_MAP={
         '51.138.625/0001-55':'Hering 3 Américas',
         '51.138.625/0002-36':'Hering Estação',
         '51.138.625/0003-17':'Hering Pantanal',
         '58.592.898/0001-14':'Hering Lucas do Rio Verde',
       };
-
-      /* lê todos os dados do arquivo em um objeto temporário primeiro */
-      const tempData={}; /* lojaKey → { dataStr: valor } */
+      const hcodeMap={};
+      S.stores.forEach(s=>{ if(s.hcode) hcodeMap[s.hcode.toUpperCase()]=s.name; });
+      const tempData={};
 
       if(tipo==='havaianas'){
+        /* formato Loja|Data|Dia — por item, usa código H */
         const iData=ci('Data');
-        const iCNPJ=hdrs.findIndex(h=>h.includes('CNPJ'));
-        const iEmpresa=hdrs.findIndex(h=>h==='Empresa'||h==='Razão Social');
-        const iLiq=hdrs.findIndex(h=>h.includes('Valor Líquido')||h.includes('Valor Liquido'));
-        rows.slice(hi+1).forEach(row=>{
-          const dataStr=String(row[iData]||'').trim();
-          if(!dataStr) return;
-          const rawLiq=row[iLiq];
-          const liq=typeof rawLiq==='number'?rawLiq:parseFloat(String(rawLiq).replace(',','.'));
-          if(isNaN(liq)) return;
-          if(periodo===2){
-            const anoData=dataStr.split('/')[2];
-            if(anoData&&anoData!==new Date().getFullYear().toString()) return;
-          }
-          const cnpj=iCNPJ>=0?String(row[iCNPJ]||'').trim():'';
-          /* se CNPJ está no mapa → é loja Hering */
-          let lojaKey=CNPJ_MAP[cnpj]||'';
-          /* senão → é loja Havaianas, busca pelo nome nos cadastrados */
-          if(!lojaKey){
-            const empresa=iEmpresa>=0?String(row[iEmpresa]||'').trim():(String(row[1]||'').trim());
-            const lojaCad=S.stores.find(s=>{
-              const nm=s.name.toLowerCase();
-              return empresa&&(nm.includes(empresa.toLowerCase().split(' ')[0])||
-                               empresa.toLowerCase().includes(nm.split(' ')[0]));
-            });
-            lojaKey=lojaCad?lojaCad.name:(empresa||'Havaianas');
-          }
-          if(!tempData[lojaKey]) tempData[lojaKey]={};
-          tempData[lojaKey][dataStr]=(tempData[lojaKey][dataStr]||0)+liq;
-        });
-      } else {
-        /* formato Loja|Data|Dia — Havaianas por item */
+        const iLojaCol=ci('Loja');
         const iLiq=hdrs.findIndex(h=>h==='Vlr Líquido'||h==='Vlr Liquido'||(h.includes('Vlr')&&h.includes('quido')));
         if(iLiq<0){toast('Coluna Vlr Líquido não encontrada: '+file.name,'err');return;}
         const anoAtual=new Date().getFullYear().toString();
-        let countOk=0, countSkip=0;
         rows.slice(hi+1).forEach(row=>{
-          const lojaRaw=String(row[0]||'').trim();
-          const dataStr=String(row[1]||'').trim();
+          const lojaRaw=String(row[iLojaCol>=0?iLojaCol:0]||'').trim();
+          const dataStr=String(row[iData>=0?iData:1]||'').trim();
           if(!lojaRaw||!dataStr||lojaRaw==='Loja') return;
-          /* dataStr deve ser DD/MM/AAAA */
           const pts=dataStr.split('/');
           if(pts.length!==3) return;
-          if(periodo===2 && pts[2]!==anoAtual){countSkip++;return;}
+          if(periodo===2&&pts[2]!==anoAtual) return;
           const rawLiq=row[iLiq];
           if(rawLiq===null||rawLiq===undefined||rawLiq==='') return;
           const liq=typeof rawLiq==='number'?rawLiq:parseFloat(String(rawLiq).replace(',','.'));
           if(isNaN(liq)||liq===0) return;
-          if(!tempData[lojaRaw]) tempData[lojaRaw]={};
-          tempData[lojaRaw][dataStr]=(tempData[lojaRaw][dataStr]||0)+liq;
-          countOk++;
+          /* identifica loja pelo código H */
+          const hcode=(lojaRaw.match(/^(H\d+)/i)||[])[1]?.toUpperCase()||'';
+          const lojaKey=hcodeMap[hcode]||lojaRaw;
+          if(!tempData[lojaKey]) tempData[lojaKey]={};
+          tempData[lojaKey][dataStr]=(tempData[lojaKey][dataStr]||0)+liq;
         });
-        console.log(`[cmp] ${file.name}: ${countOk} registros OK, ${countSkip} pulados (ano errado)`);
+      } else {
+        /* formato Data|Empresa|CNPJ — Hering sintético, agrupado por dia */
+        const iData=ci('Data');
+        const iCNPJ=hdrs.findIndex(h=>h.includes('CNPJ'));
+        const iLiq=hdrs.findIndex(h=>h.includes('Valor Líquido')||h.includes('Valor Liquido'));
+        if(iLiq<0){toast('Coluna Valor Líquido não encontrada: '+file.name,'err');return;}
+        const anoAtual=new Date().getFullYear().toString();
+        rows.slice(hi+1).forEach(row=>{
+          const dataStr=String(row[iData]||'').trim();
+          if(!dataStr) return;
+          const pts=dataStr.split('/');
+          if(pts.length!==3) return;
+          if(periodo===2&&pts[2]!==anoAtual) return;
+          const rawLiq=row[iLiq];
+          const liq=typeof rawLiq==='number'?rawLiq:parseFloat(String(rawLiq).replace(',','.'));
+          if(isNaN(liq)) return;
+          const cnpj=iCNPJ>=0?String(row[iCNPJ]||'').trim():'';
+          const lojaKey=CNPJ_MAP[cnpj]||cnpj;
+          if(!lojaKey) return;
+          if(!tempData[lojaKey]) tempData[lojaKey]={};
+          tempData[lojaKey][dataStr]=(tempData[lojaKey][dataStr]||0)+liq;
+        });
       }
 
       /* merge: para cada loja no tempData, substitui apenas as datas deste arquivo
@@ -3128,8 +3126,8 @@ function cmpDrawCards(){
   const el=document.getElementById('cmpSummaryCards');
   if(!el) return;
   el.innerHTML=`
-    <div class="sum-card"><div class="sum-label">Total ${ano1}</div><div class="sum-val">${brl(tot1)}</div><div class="sum-sub">${mesTxt1}</div></div>
-    <div class="sum-card red"><div class="sum-label">Total ${ano2}</div><div class="sum-val" style="color:var(--accent2)">${brl(tot2)}</div><div class="sum-sub">${mesTxt2}</div></div>
+    <div class="sum-card red"><div class="sum-label">Total ${ano1}</div><div class="sum-val" style="color:var(--accent2)">${brl(tot1)}</div><div class="sum-sub">${mesTxt1}</div></div>
+    <div class="sum-card"><div class="sum-label">Total ${ano2}</div><div class="sum-val" style="color:var(--accent1)">${brl(tot2)}</div><div class="sum-sub">${mesTxt2}</div></div>
     <div class="sum-card"><div class="sum-label">Variação</div><div class="sum-val" style="color:${diff>=0?'#16a34a':'var(--accent2)'}">${brl(Math.abs(diff))}</div><div class="sum-diff ${diffClass}">${diffIcon} ${Math.abs(pct).toFixed(1)}% em relação a ${ano1}</div></div>`;
 }
 
