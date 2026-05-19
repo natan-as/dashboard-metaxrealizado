@@ -841,7 +841,35 @@ function init() {
       if (dados.stores && dados.sellers && dados.metas) {
         const { cmpData: cd, cmpFiles: cf, usuarios: usr, ...metaDados } = dados;
         S = metaDados;
-        if (cd) { cmpData = cd; cmpFiles = cf || {1:[],2:[]}; }
+        if (cd) {
+          /* mescla com localStorage — não perde dados importados localmente */
+          const localRaw = localStorage.getItem('cmp360');
+          let localCmp = {1:{},2:{}};
+          try { if(localRaw) { const ld=JSON.parse(localRaw); localCmp=ld.data||{1:{},2:{}}; } } catch(e){}
+          /* dados do JSON têm prioridade sobre local, mas local preserva meses extras */
+          cmpData = {1:{},2:{}};
+          [1,2].forEach(p=>{
+            /* começa com dados do JSON */
+            Object.entries(cd[p]||{}).forEach(([loja,dias])=>{
+              cmpData[p][loja]={...dias};
+            });
+            /* adiciona meses do localStorage que não estão no JSON */
+            Object.entries(localCmp[p]||{}).forEach(([loja,dias])=>{
+              if(!cmpData[p][loja]) cmpData[p][loja]={};
+              Object.entries(dias).forEach(([data,val])=>{
+                const pts=data.split('/');
+                const mesAno=pts.length===3?pts[1]+'/'+pts[2]:'';
+                /* só adiciona se esse mês não existe no JSON */
+                const mesNoJson=Object.keys((cd[p]||{})[loja]||{}).some(d=>{
+                  const dp=d.split('/');
+                  return dp.length===3&&dp[1]+'/'+dp[2]===mesAno;
+                });
+                if(!mesNoJson) cmpData[p][loja][data]=val;
+              });
+            });
+          });
+          cmpFiles = cf || {1:[],2:[]};
+        }
         /* garante dados fixos mesmo após carregar dados.json */
         aplicarDadosFixos();
         /* carrega usuários do JSON — tem prioridade sobre localStorage */
