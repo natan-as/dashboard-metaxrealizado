@@ -388,6 +388,7 @@ td{padding:13px 14px;vertical-align:middle}
     <!-- Botões Meta X Realizado -->
     <button class="btn btn-ghost" id="btnImportRel" onclick="openImport()" style="font-size:12px;padding:6px 12px">📥 Importar</button>
     <button class="btn btn-ghost" id="btnExport" onclick="exportarDados()" style="font-size:12px;padding:6px 12px">💾 Exportar</button>
+    <button class="btn btn-ghost" id="btnRestore" onclick="restaurarBackup()" style="font-size:12px;padding:6px 12px;display:none" title="Restaurar último backup local">↩ Restaurar</button>
     <button class="btn btn-primary" id="btnAdmin" onclick="openAdmin()" style="font-size:12px;padding:6px 12px">⚙️ Administrar</button>
     <!-- Botões Comparativo -->
     <button class="btn btn-ghost" id="btnImportP1" onclick="cmpOpenImportModal(1)" style="display:none;font-size:12px;padding:6px 12px">📥 Período 1</button>
@@ -951,6 +952,15 @@ function drawMonthTabs(){
    EXPORTAR / IMPORTAR DADOS COMPLETOS
 ============================================================ */
 function exportarDados() {
+  /* salva backup automático no localStorage antes de exportar */
+  try {
+    const backup = {
+      dados: { ...S, cmpData, cmpFiles },
+      ts: new Date().toISOString()
+    };
+    localStorage.setItem('m360_backup', JSON.stringify(backup));
+  } catch(e) {}
+
   /* exporta Meta X Realizado + Comparativo + Usuários em um único JSON */
   const usuarios = loadUsers();
   const dados = JSON.stringify({ ...S, cmpData, cmpFiles, usuarios }, null, 2);
@@ -962,6 +972,25 @@ function exportarDados() {
   a.click();
   URL.revokeObjectURL(url);
   toast('✅ Dados exportados! Suba o dados.json no GitHub.');
+}
+
+function restaurarBackup() {
+  try {
+    const raw = localStorage.getItem('m360_backup');
+    if (!raw) return toast('Nenhum backup encontrado.', 'err');
+    const backup = JSON.parse(raw);
+    const { cmpData: cd, cmpFiles: cf, ...metaDados } = backup.dados;
+    S = metaDados;
+    if (cd) { cmpData = cd; cmpFiles = cf || {1:[],2:{}}; }
+    aplicarDadosFixos();
+    save();
+    cmpSave();
+    draw();
+    const dt = new Date(backup.ts).toLocaleString('pt-BR');
+    toast(`✅ Backup de ${dt} restaurado!`);
+  } catch(e) {
+    toast('Erro ao restaurar backup.', 'err');
+  }
 }
 
 function importarDados(event) {
@@ -2235,6 +2264,8 @@ function mostrarApp() {
   document.getElementById('btnAdmin').style.display     = isAdmin ? '' : 'none';
   document.getElementById('btnExport').style.display    = isAdmin ? '' : 'none';
   document.getElementById('btnImportRel').style.display = isAdmin ? '' : 'none';
+  /* mostra botão restaurar só se tiver backup e for admin */
+  document.getElementById('btnRestore').style.display = isAdmin && localStorage.getItem('m360_backup') ? '' : 'none';
   document.getElementById('btnImportP1').style.display   = 'none';
   document.getElementById('btnImportP2').style.display   = 'none';
   document.getElementById('btnExportComp').style.display = 'none';
@@ -2420,8 +2451,8 @@ function cmpHandleFileModal(event){
         let tipo='',hi=-1;
         for(let i=0;i<Math.min(rows.length,8);i++){
           const r=rows[i].map(c=>String(c).trim());
-          if(r[0]==='Loja'&&r[1]==='Data'&&r[2]==='Dia'){hi=i;tipo='hering';break;}
-          if(r[0]==='Data'&&r.some(c=>c.includes('CNPJ'))){hi=i;tipo='havaianas';break;}
+          if(r[0]==='Loja'&&r[1]==='Data'&&r[2]==='Dia'){hi=i;tipo='havaianas';break;}
+          if(r[0]==='Data'&&r.some(c=>c.includes('CNPJ'))){hi=i;tipo='hering';break;}
         }
         if(!tipo){toast('Formato não reconhecido: '+file.name,'err');return;}
         const hdrs=rows[hi].map(c=>String(c).trim());
@@ -2435,7 +2466,8 @@ function cmpHandleFileModal(event){
         const iData=ci('Data');
         const iCNPJ=hdrs.findIndex(h=>h.includes('CNPJ'));
         const iEmpresa=hdrs.findIndex(h=>h==='Empresa'||h==='Razão Social');
-        const iLiq=tipo==='havaianas'
+        /* Hering sintético: Valor Líquido (R$) | Havaianas: Vlr Líquido */
+        const iLiq=tipo==='hering'
           ?hdrs.findIndex(h=>h.includes('Valor Líquido')||h.includes('Valor Liquido'))
           :hdrs.findIndex(h=>h==='Vlr Líquido'||h==='Vlr Liquido'||(h.includes('Vlr')&&h.includes('quido')));
 
@@ -2460,7 +2492,9 @@ function cmpHandleFileModal(event){
               lojaKey=lojaCad?lojaCad.name:(empresa||'Havaianas');
             }
           } else if(tipo==='hering'){
-            lojaKey=String(row[0]||'').trim();
+            /* formato sintético Hering: identifica loja pelo CNPJ */
+            const cnpjFull=iCNPJ>=0?String(row[iCNPJ]||'').trim():'';
+            lojaKey=CNPJ_MAP[cnpjFull]||CNPJ_MAP[cnpjFull.replace(/\./g,'').replace(/\//g,'/')]||String(row[0]||'').trim();
           } else {
             lojaKey=String(row[1]||'').trim()||'Havaianas';
           }
