@@ -2273,7 +2273,7 @@
     }
   },
   "month": "2026-05",
-  "store": "all-hering",
+  "store": "all",
   "extrasLoja": {
     "2026-03": {
       "st_1774674831929": {
@@ -7294,26 +7294,6 @@
       ]
     },
     {
-      "id": "u_havaianas",
-      "user": "havaianas",
-      "pass": "4b85f4228b08cb4ce1d82de2b5b009e5aa2e39e32b52f62a286d14a8ce43109a",
-      "nome": "Havaianas",
-      "grupo": "havaianas",
-      "lojas": [
-        "all"
-      ]
-    },
-    {
-      "id": "u_hering",
-      "user": "hering",
-      "pass": "1ef55abc5b6aafc4a559ba42766513035eb6e0cd0de13f4148cfb19db6b41f5e",
-      "nome": "Hering",
-      "grupo": "hering",
-      "lojas": [
-        "all"
-      ]
-    },
-    {
       "id": "u_cd",
       "user": "cd",
       "pass": "229e8caea68f8a7ae988766690c09d7cc651154e1c9d6e338eb368c526acd48b",
@@ -7334,9 +7314,9 @@
       ]
     },
     {
-      "id": "u_1775757446263",
+      "id": "u_1780402565396",
       "user": "fernanda",
-      "pass": "296ce71ed4ab5d69ec6813ad6d1f400ee2d859b9cbe5248b9a6e1624e52ec070",
+      "pass": "c8612941d00de588b9db0c7888f5292b91a52b6b7190c33c69711796f0b36bc3",
       "nome": "Fernanda Arruda",
       "grupo": "hering",
       "lojas": [
