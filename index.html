@@ -3457,7 +3457,6 @@ function wizardRenderLoja(){
 }
 
 function wizardSalvarLojaAtual(){
-  /* salva valores da loja atual no rascunho e no S.metas */
   const loja = wizardLojas[wizardIdx];
   const sellers = S.sellers.filter(s=>s.storeId===loja.id&&s.ativo!==false);
   if(!S.metas[wizardMonth]) S.metas[wizardMonth]={};
@@ -3473,13 +3472,28 @@ function wizardSalvarLojaAtual(){
     const prev = S.metas[wizardMonth][chave]||S.metas[wizardMonth][s.id]||{};
     if(S.metas[wizardMonth][s.id]) delete S.metas[wizardMonth][s.id];
     S.metas[wizardMonth][chave] = {
-      mV, mQ,
-      rV:  prev.rV  ||0,
-      rQ:  prev.rQ  ||0,
-      rT:  prev.rT  ||0,
+      mV, mQ, rV: prev.rV||0, rQ: prev.rQ||0, rT: prev.rT||0,
       lojaId: s.storeId,
     };
   });
+
+  /* salva vendedores extras (de outra loja) adicionados pelo import de meta */
+  const extraDiv = document.getElementById('wizardExtraVendedores');
+  if(extraDiv){
+    S.sellers.forEach(s=>{
+      const mvEl = document.getElementById('wmV_'+s.id);
+      const mqEl = document.getElementById('wmQ_'+s.id);
+      if(!mvEl||!extraDiv.contains(mvEl)) return;
+      const chave = s.id+'_'+loja.id;
+      const mV = parseFloat((mvEl.value||'0').replace(/\./g,'').replace(',','.'))||0;
+      const mQ = parseFloat(mqEl?.value)||0;
+      const prev = S.metas[wizardMonth][chave]||{};
+      S.metas[wizardMonth][chave] = {
+        mV, mQ, rV: prev.rV||0, rQ: prev.rQ||0, rT: prev.rT||0,
+        lojaId: loja.id,
+      };
+    });
+  }
 }
 
 function wizardProximo(){
@@ -3541,13 +3555,12 @@ function wizardImportarMeta(event){
       if(!Object.keys(metasArquivo).length) return toast('Nenhum vendedor encontrado no arquivo','err');
 
       const loja = wizardLojas[wizardIdx];
-      const sellers = S.sellers.filter(s=>s.storeId===loja.id&&s.ativo!==false);
       let preenchidos = 0;
       const naoEncontrados = [];
+      const outraLoja = []; /* encontrados mas cadastrados em outra loja */
 
-      /* tenta match para cada vendedor do arquivo */
       Object.entries(metasArquivo).forEach(([nomeNorm, dados])=>{
-        /* busca em todos os vendedores ativos */
+        /* busca em TODOS os vendedores ativos do sistema */
         const found = S.sellers.find(s=>{
           const sn = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
           return sn===nomeNorm || sn.slice(0,15)===nomeNorm.slice(0,15);
@@ -3556,12 +3569,55 @@ function wizardImportarMeta(event){
         if(found){
           const mvEl = document.getElementById('wmV_'+found.id);
           const mqEl = document.getElementById('wmQ_'+found.id);
-          if(mvEl){ mvEl.value = dados.mV.toFixed(2).replace('.',','); preenchidos++; }
-          if(mqEl) mqEl.value = Math.round(dados.mQ);
+          if(mvEl){
+            /* vendedor já está visível no wizard (mesma loja) */
+            mvEl.value = dados.mV.toFixed(2).replace('.',',');
+            if(mqEl) mqEl.value = Math.round(dados.mQ);
+            preenchidos++;
+          } else {
+            /* vendedor existe mas está em outra loja — adiciona no wizard */
+            outraLoja.push({seller: found, dados});
+          }
         } else {
           naoEncontrados.push(dados);
         }
       });
+
+      /* adiciona vendedores de outra loja no body do wizard */
+      const body = document.getElementById('wizardBody');
+      const oldExtra = document.getElementById('wizardExtraVendedores');
+      if(oldExtra) oldExtra.remove();
+
+      if(outraLoja.length){
+        const extraDiv = document.createElement('div');
+        extraDiv.id = 'wizardExtraVendedores';
+        extraDiv.style.cssText = 'margin-top:12px;padding:12px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:var(--rs)';
+        extraDiv.innerHTML = `
+          <div style="font-size:11px;font-weight:700;color:#3730a3;margin-bottom:10px">
+            ℹ ${outraLoja.length} vendedor(es) encontrado(s) em outra loja — serão cadastrados aqui:
+          </div>
+          ${outraLoja.map(({seller, dados})=>`
+            <div style="display:grid;grid-template-columns:1fr 160px 120px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #c7d2fe">
+              <div>
+                <div style="font-weight:600;font-size:13px">${seller.name}</div>
+                <div style="font-size:10px;color:#6366f1">Cadastrado em: ${S.stores.find(s=>s.id===seller.storeId)?.name||'?'}</div>
+              </div>
+              <div>
+                <label class="flbl" style="font-size:10px">Meta R$</label>
+                <input type="text" inputmode="decimal" class="finp" id="wmV_${seller.id}"
+                  value="${dados.mV.toFixed(2).replace('.',',')}"
+                  placeholder="0,00" style="text-align:right"
+                  onkeypress="return /[0-9.,]/.test(event.key)">
+              </div>
+              <div>
+                <label class="flbl" style="font-size:10px">Meta Qtd</label>
+                <input type="number" class="finp" id="wmQ_${seller.id}"
+                  value="${Math.round(dados.mQ)}" style="text-align:right">
+              </div>
+            </div>`).join('')}`;
+        body.appendChild(extraDiv);
+        preenchidos += outraLoja.length;
+      }
 
       /* se há não encontrados, mostra área de cadastro rápido no wizard */
       if(naoEncontrados.length){
