@@ -3513,68 +3513,87 @@ function wizardImportarMeta(event){
   reader.onload = e => {
     try {
       const wb = XLSX.read(e.target.result, { type:'array', cellFormula:false });
-      /* localiza aba DIV. META (case insensitive) */
       const sheetName = wb.SheetNames.find(n=>n.toUpperCase().includes('DIV')&&n.toUpperCase().includes('META'));
       if(!sheetName) return toast('Aba "DIV. META" não encontrada no arquivo','err');
 
       const ws = wb.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
 
-      /* localiza linha de cabeçalho (contém "VENDEDOR") */
       const hiIdx = rows.findIndex(r=>r.some(c=>String(c).toUpperCase().includes('VENDEDOR(A)')));
       if(hiIdx<0) return toast('Estrutura do arquivo não reconhecida','err');
 
-      /* pega só o primeiro bloco — para quando encontrar segunda seção */
       const metasArquivo = {};
       for(let i=hiIdx+1; i<rows.length; i++){
         const row = rows[i];
         const nomeRaw = String(row[0]||'').trim();
         if(!nomeRaw) break;
         if(['META DESAFIO','SUPER META','META LOJA','VENDEDOR(A)'].some(s=>nomeRaw.toUpperCase().includes(s))) break;
-
         const mv = parseFloat(String(row[5]||'').replace(',','.'));
         const mq = parseFloat(String(row[6]||'').replace(',','.'));
         if(isNaN(mv)) break;
-
-        metasArquivo[nomeRaw.toLowerCase()] = {
-          mV: Math.round(mv * 100) / 100,
-          mQ: Math.round((mq||0) * 100) / 100,
+        metasArquivo[nomeRaw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')] = {
+          mV: Math.round(mv*100)/100,
+          mQ: Math.round((mq||0)*100)/100,
           nomeOriginal: nomeRaw,
         };
       }
 
       if(!Object.keys(metasArquivo).length) return toast('Nenhum vendedor encontrado no arquivo','err');
 
-      /* preenche os campos do wizard com os valores do arquivo */
       const loja = wizardLojas[wizardIdx];
       const sellers = S.sellers.filter(s=>s.storeId===loja.id&&s.ativo!==false);
-      let preenchidos = 0, naoEncontrados = [];
+      let preenchidos = 0;
+      const naoEncontrados = [];
 
-      sellers.forEach(s=>{
-        const nomeNorm = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-        /* tenta match exato ou por primeiros 10 chars */
-        const match = Object.entries(metasArquivo).find(([k])=>{
-          const kn = k.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-          return kn === nomeNorm || kn.slice(0,15) === nomeNorm.slice(0,15);
+      /* tenta match para cada vendedor do arquivo */
+      Object.entries(metasArquivo).forEach(([nomeNorm, dados])=>{
+        /* busca em todos os vendedores ativos */
+        const found = S.sellers.find(s=>{
+          const sn = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+          return sn===nomeNorm || sn.slice(0,15)===nomeNorm.slice(0,15);
         });
 
-        if(match){
-          const mvEl = document.getElementById('wmV_'+s.id);
-          const mqEl = document.getElementById('wmQ_'+s.id);
-          if(mvEl) mvEl.value = match[1].mV.toFixed(2).replace('.',',');
-          if(mqEl) mqEl.value = Math.round(match[1].mQ);
-          preenchidos++;
+        if(found){
+          const mvEl = document.getElementById('wmV_'+found.id);
+          const mqEl = document.getElementById('wmQ_'+found.id);
+          if(mvEl){ mvEl.value = dados.mV.toFixed(2).replace('.',','); preenchidos++; }
+          if(mqEl) mqEl.value = Math.round(dados.mQ);
         } else {
-          naoEncontrados.push(s.name);
+          naoEncontrados.push(dados);
         }
       });
 
-      if(preenchidos>0){
-        toast(`✅ ${preenchidos} vendedor(es) preenchido(s) automaticamente!`);
-      }
+      /* se há não encontrados, mostra área de cadastro rápido no wizard */
       if(naoEncontrados.length){
-        toast(`⚠ Não encontrados: ${naoEncontrados.join(', ')}`, 'warn');
+        const body = document.getElementById('wizardBody');
+        const existing = document.getElementById('wizardNaoCadastrados');
+        if(existing) existing.remove();
+
+        const div = document.createElement('div');
+        div.id = 'wizardNaoCadastrados';
+        div.style.cssText = 'margin-top:16px;padding:14px;background:#fffbf0;border:1px solid #f59e0b;border-radius:var(--rs)';
+        div.innerHTML = `
+          <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:10px">
+            ⚠ ${naoEncontrados.length} vendedor(es) do arquivo não encontrado(s) no sistema:
+          </div>
+          ${naoEncontrados.map(d=>{
+            const uid='wm_'+Math.random().toString(36).slice(2,8);
+            const lojaOpts = S.stores.map(s=>`<option value="${s.id}"${s.id===loja.id?' selected':''}>${s.name}</option>`).join('');
+            return `<div id="wnc_${uid}" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #fde68a;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:600;flex:1">${d.nomeOriginal}</span>
+              <span style="font-size:11px;color:#92400e">mV=R$ ${d.mV.toLocaleString('pt-BR',{minimumFractionDigits:2})} | mQ=${Math.round(d.mQ)}</span>
+              <select id="wncLoja_${uid}" style="padding:4px 8px;border-radius:var(--rs);border:1px solid var(--border);font-size:12px">${lojaOpts}</select>
+              <button onclick="wizardCadastrarVendedor('${uid}','${d.nomeOriginal.replace(/'/g,"\\'")}',${d.mV},${d.mQ})"
+                style="padding:4px 12px;border-radius:var(--rs);border:none;background:var(--accent1);color:#fff;font-size:11px;font-weight:700;cursor:pointer">
+                + Cadastrar
+              </button>
+            </div>`;
+          }).join('')}`;
+        body.appendChild(div);
       }
+
+      if(preenchidos>0) toast(`✅ ${preenchidos} vendedor(es) preenchido(s) automaticamente!`);
+      else if(!naoEncontrados.length) toast('Nenhum vendedor do arquivo encontrado no sistema','err');
 
     } catch(err){
       console.error(err);
@@ -3582,6 +3601,34 @@ function wizardImportarMeta(event){
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+function wizardCadastrarVendedor(uid, nome, mV, mQ){
+  const lojaId = document.getElementById('wncLoja_'+uid)?.value;
+  if(!lojaId) return toast('Selecione a loja','err');
+  if(S.sellers.find(s=>s.name.toLowerCase()===nome.toLowerCase()&&s.storeId===lojaId))
+    return toast('Vendedor já cadastrado nessa loja','err');
+
+  /* cadastra */
+  const newSeller = {id:'sv_'+Date.now(), name:nome, storeId:lojaId, ativo:true};
+  S.sellers.push(newSeller);
+  save();
+
+  /* remove linha da lista de não cadastrados */
+  const row = document.getElementById('wnc_'+uid);
+  if(row) row.style.cssText='opacity:.4;pointer-events:none;text-decoration:line-through;padding:8px 0;border-bottom:1px solid #fde68a';
+
+  /* re-renderiza a loja atual para incluir o novo vendedor com a meta já preenchida */
+  wizardRenderLoja();
+
+  /* preenche a meta do recém cadastrado */
+  setTimeout(()=>{
+    const mvEl = document.getElementById('wmV_'+newSeller.id);
+    const mqEl = document.getElementById('wmQ_'+newSeller.id);
+    if(mvEl) mvEl.value = mV.toFixed(2).replace('.',',');
+    if(mqEl) mqEl.value = Math.round(mQ);
+    toast(`✅ ${nome} cadastrado e meta preenchida!`);
+  }, 100);
 }
 
 init();
