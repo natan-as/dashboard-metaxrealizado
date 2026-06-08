@@ -706,6 +706,10 @@ td{padding:13px 14px;vertical-align:middle}
     <div class="mfoot" style="justify-content:space-between">
       <button class="btn btn-ghost" id="wizardBtnAnterior" onclick="wizardAnterior()" style="display:none">← Anterior</button>
       <div style="display:flex;gap:8px;margin-left:auto">
+        <label class="btn btn-ghost" style="cursor:pointer;margin:0" title="Importar arquivo de meta desta loja">
+          📂 Importar arquivo de meta
+          <input type="file" accept=".xlsx" style="display:none" onchange="wizardImportarMeta(event)">
+        </label>
         <button class="btn btn-ghost" onclick="closeM('wizardMetaModal')">Cancelar</button>
         <button class="btn btn-primary" id="wizardBtnProximo" onclick="wizardProximo()">Próxima Loja →</button>
       </div>
@@ -3498,6 +3502,86 @@ function wizardAnterior(){
   wizardSalvarLojaAtual();
   wizardIdx--;
   wizardRenderLoja();
+}
+
+function wizardImportarMeta(event){
+  const file = event.target.files[0];
+  event.target.value = '';
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'array', cellFormula:false });
+      /* localiza aba DIV. META (case insensitive) */
+      const sheetName = wb.SheetNames.find(n=>n.toUpperCase().includes('DIV')&&n.toUpperCase().includes('META'));
+      if(!sheetName) return toast('Aba "DIV. META" não encontrada no arquivo','err');
+
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+      /* localiza linha de cabeçalho (contém "VENDEDOR") */
+      const hiIdx = rows.findIndex(r=>r.some(c=>String(c).toUpperCase().includes('VENDEDOR(A)')));
+      if(hiIdx<0) return toast('Estrutura do arquivo não reconhecida','err');
+
+      /* pega só o primeiro bloco — para quando encontrar segunda seção */
+      const metasArquivo = {};
+      for(let i=hiIdx+1; i<rows.length; i++){
+        const row = rows[i];
+        const nomeRaw = String(row[0]||'').trim();
+        if(!nomeRaw) break;
+        if(['META DESAFIO','SUPER META','META LOJA','VENDEDOR(A)'].some(s=>nomeRaw.toUpperCase().includes(s))) break;
+
+        const mv = parseFloat(String(row[5]||'').replace(',','.'));
+        const mq = parseFloat(String(row[6]||'').replace(',','.'));
+        if(isNaN(mv)) break;
+
+        metasArquivo[nomeRaw.toLowerCase()] = {
+          mV: Math.round(mv * 100) / 100,
+          mQ: Math.round((mq||0) * 100) / 100,
+          nomeOriginal: nomeRaw,
+        };
+      }
+
+      if(!Object.keys(metasArquivo).length) return toast('Nenhum vendedor encontrado no arquivo','err');
+
+      /* preenche os campos do wizard com os valores do arquivo */
+      const loja = wizardLojas[wizardIdx];
+      const sellers = S.sellers.filter(s=>s.storeId===loja.id&&s.ativo!==false);
+      let preenchidos = 0, naoEncontrados = [];
+
+      sellers.forEach(s=>{
+        const nomeNorm = s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        /* tenta match exato ou por primeiros 10 chars */
+        const match = Object.entries(metasArquivo).find(([k])=>{
+          const kn = k.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+          return kn === nomeNorm || kn.slice(0,15) === nomeNorm.slice(0,15);
+        });
+
+        if(match){
+          const mvEl = document.getElementById('wmV_'+s.id);
+          const mqEl = document.getElementById('wmQ_'+s.id);
+          if(mvEl) mvEl.value = match[1].mV.toFixed(2).replace('.',',');
+          if(mqEl) mqEl.value = Math.round(match[1].mQ);
+          preenchidos++;
+        } else {
+          naoEncontrados.push(s.name);
+        }
+      });
+
+      if(preenchidos>0){
+        toast(`✅ ${preenchidos} vendedor(es) preenchido(s) automaticamente!`);
+      }
+      if(naoEncontrados.length){
+        toast(`⚠ Não encontrados: ${naoEncontrados.join(', ')}`, 'warn');
+      }
+
+    } catch(err){
+      console.error(err);
+      toast('Erro ao ler o arquivo: '+err.message,'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 init();
